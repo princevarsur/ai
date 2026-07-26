@@ -24,3 +24,7 @@ frontend/.vite/
 Thumbs.db
 .vscode/
 .idea/
+
+.agents/
+skills-lock.json
+THEMIS_SIMPLIFIED.md
