@@ -1,0 +1,254 @@
+[
+  {
+    "id": 1,
+    "clause_text": "Female employees are entitled to 12 weeks of maternity leave.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "notes": "Law requires 26 weeks, policy says 12"
+  },
+  {
+    "id": 2,
+    "clause_text": "Employees may avail maternity leave for a period of 3 months.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "notes": "3 months = ~13 weeks, law requires 26 weeks"
+  },
+  {
+    "id": 3,
+    "clause_text": "Employee personal data may be shared with third-party service providers without prior notification.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 6",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "notes": "DPDP requires explicit consent before sharing"
+  },
+  {
+    "id": 4,
+    "clause_text": "The company collects employee data for operational purposes.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 12",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "No purpose limitation clause, vague 'operational purposes'"
+  },
+  {
+    "id": 5,
+    "clause_text": "The company promotes a respectful work environment.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "MISSING",
+    "ground_truth_label": true,
+    "notes": "Talks about respect but no ICC constituted"
+  },
+  {
+    "id": 6,
+    "clause_text": "Employee records will be maintained as per company requirements.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 13",
+    "expected_status": "MISSING",
+    "ground_truth_label": true,
+    "notes": "No data erasure / right to be forgotten clause"
+  },
+  {
+    "id": 7,
+    "clause_text": "Annual leave is provided as per management discretion.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Wages",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "Vague, no specific timely payment or leave entitlement"
+  },
+  {
+    "id": 8,
+    "clause_text": "Data is stored on company servers with standard practices.",
+    "should_match_law": "IT Act, 2000",
+    "should_match_section": "Section 43A",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "No specific security measures mentioned (encryption, audits)"
+  },
+  {
+    "id": 9,
+    "clause_text": "New employees undergo a general orientation program.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 19",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "General orientation, no specific POSH awareness training"
+  },
+  {
+    "id": 10,
+    "clause_text": "Employee concerns may be raised with the HR department informally.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 8",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "No formal grievance redressal mechanism for data principals"
+  },
+  {
+    "id": 11,
+    "clause_text": "The company may terminate employment at any time without notice.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Industrial Relations",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "notes": "Law requires notice period for termination"
+  },
+  {
+    "id": 12,
+    "clause_text": "Maternity leave of 18 weeks is available for all female staff.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "notes": "18 weeks is less than required 26 weeks"
+  },
+  {
+    "id": 13,
+    "clause_text": "The company has constituted an Internal Complaints Committee (ICC) comprising a Presiding Officer, two internal members, and one external member from an NGO.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Fully compliant ICC structure"
+  },
+  {
+    "id": 14,
+    "clause_text": "Every female employee is entitled to 26 weeks of paid maternity leave for the first two children.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Exact compliance with 26 weeks requirement"
+  },
+  {
+    "id": 15,
+    "clause_text": "Personal data shall be processed only after obtaining explicit, informed consent from the data principal.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 6",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Explicit consent clause present"
+  },
+  {
+    "id": 16,
+    "clause_text": "Employees have the right to request erasure of their personal data upon termination of employment.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 13",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Data erasure right properly addressed"
+  },
+  {
+    "id": 17,
+    "clause_text": "The company implements encryption, access controls, and regular security audits as reasonable security practices.",
+    "should_match_law": "IT Act, 2000",
+    "should_match_section": "Section 43A",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Specific security measures listed"
+  },
+  {
+    "id": 18,
+    "clause_text": "Wages are paid within 7 days of the close of the wage period via direct bank transfer.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Wages",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Timely payment within 7 days"
+  },
+  {
+    "id": 19,
+    "clause_text": "A crèche facility is available for employees with children below 6 years of age.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 11A",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Creche facility provided"
+  },
+  {
+    "id": 20,
+    "clause_text": "Mandatory POSH awareness workshops are conducted quarterly for all employees.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 19",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Regular POSH training conducted"
+  },
+  {
+    "id": 21,
+    "clause_text": "Provident Fund contributions of 12% of basic wages are deducted and deposited monthly.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Social Security",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "PF at 12% as required"
+  },
+  {
+    "id": 22,
+    "clause_text": "The company contributes 2% of average net profit over the last three financial years towards CSR activities.",
+    "should_match_law": "Companies Act, 2013",
+    "should_match_section": "Section 135",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "CSR 2% compliance"
+  },
+  {
+    "id": 23,
+    "clause_text": "We provide generous maternity benefits as per applicable laws.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "Edge case: vague reference to 'applicable laws', no specific 26-week mention"
+  },
+  {
+    "id": 24,
+    "clause_text": "Employee data is handled responsibly.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 6",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "Edge case: too vague, no consent mechanism, no specifics"
+  },
+  {
+    "id": 25,
+    "clause_text": "All complaints regarding workplace behavior will be addressed by the HR team.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "notes": "Edge case: HR handles complaints but no ICC, no formal POSH structure"
+  },
+  {
+    "id": 26,
+    "clause_text": "Employees are required to maintain confidentiality of all company and client information during and after employment.",
+    "should_match_law": "IT Act, 2000",
+    "should_match_section": "Section 72A",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Confidentiality clause covers Section 72A requirements"
+  },
+  {
+    "id": 27,
+    "clause_text": "Either party may terminate employment by providing 30 days written notice or salary in lieu thereof.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Industrial Relations",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Proper notice period clause"
+  },
+  {
+    "id": 28,
+    "clause_text": "In the event of a data breach, the company will notify affected individuals and the Data Protection Board within 72 hours.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 10",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "notes": "Proper breach notification with timeline"
+  }
+]
