@@ -17,7 +17,7 @@ class Policy(models.Model):
 
     title = models.CharField(max_length=300)
     file = models.FileField(upload_to='policies/')
-    file_type = models.CharField(max_length=10, help_text='Auto-detected: pdf, docx, txt.')
+    file_type = models.CharField(max_length=10, blank=True, help_text='Auto-detected: pdf, docx, txt.')
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
     extracted_text = models.TextField(blank=True)
     clause_count = models.IntegerField(default=0)
