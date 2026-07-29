@@ -73,10 +73,13 @@ def calculate_overall_score(
             "category_flag_counts": {},
         }
 
-    # Overall score: start at 100, deduct per flagged issue
+    # Overall score: weighted deduction by severity and flagged ratio
+    # Each flagged issue deducts (severity_score / total_rules) * 1.5
+    # The 1.5 multiplier ensures a policy with all critical rules missing
+    # (which can't happen in practice) would score near zero.
     total_deduction = 0.0
     for issue in flagged_issues:
-        total_deduction += issue["severity_score"] / total_rules
+        total_deduction += (issue["severity_score"] / total_rules) * 1.5
 
     overall_score = max(0.0, min(100.0, 100.0 - total_deduction))
 
