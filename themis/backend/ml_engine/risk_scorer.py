@@ -26,20 +26,20 @@ def calculate_issue_severity(
     Returns:
         Severity score 0-100. Higher = more severe.
     """
-    if rule_status == "MISSING":
-        # No keyword found AND no meaningful semantic match
-        base = 85
-    elif rule_status == "CONFLICT":
+    if rule_status == "CONFLICT":
         # Clause exists but contradicts the law requirement
-        base = 75
+        base = 90
     elif rule_status == "GAP":
         # Clause partially addresses the law but incomplete
-        base = 50
+        base = 65
+    elif rule_status == "MISSING":
+        # No keyword found AND no meaningful semantic match
+        base = 35
     else:
-        base = 30
+        base = 20
 
     # Scale by severity_weight (1-10) and inverse similarity
-    score = base * (severity_weight / 10) + (1 - max_similarity) * 15
+    score = base * (severity_weight / 10.0) + (1.0 - max_similarity) * 15.0
 
     return min(100, max(0, int(score)))
 
@@ -73,13 +73,16 @@ def calculate_overall_score(
             "category_flag_counts": {},
         }
 
-    # Overall score: weighted deduction by severity and flagged ratio
-    # Each flagged issue deducts (severity_score / total_rules) * 1.5
-    # The 1.5 multiplier ensures a policy with all critical rules missing
-    # (which can't happen in practice) would score near zero.
+    # Overall score: weighted deduction by severity and status
     total_deduction = 0.0
     for issue in flagged_issues:
-        total_deduction += (issue["severity_score"] / total_rules) * 1.5
+        st = issue.get("status", "missing").lower()
+        if st == "conflict":
+            total_deduction += 15.0 * (issue["severity_score"] / 100.0)
+        elif st == "gap":
+            total_deduction += 8.0 * (issue["severity_score"] / 100.0)
+        else:
+            total_deduction += 0.5 * (issue["severity_score"] / 100.0)
 
     overall_score = max(0.0, min(100.0, 100.0 - total_deduction))
 

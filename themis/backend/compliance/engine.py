@@ -145,8 +145,11 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
         all_miniml_scores.append(miniml_sim)
         all_inlegal_scores.append(inlegal_sim)
 
+        # Find the best match text to check for explicit violations
+        best_text = best_match["clause_text"] if best_match else ""
+
         # Determine issue status
-        status = _determine_status(keyword_found, combined_sim)
+        status = _determine_status(keyword_found, combined_sim, best_text)
 
         if status is None:
             # COMPLIANT — keyword found AND strong semantic match
@@ -155,7 +158,7 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
 
         # Find the clause text that triggered this
         clause_text, clause_index = _find_relevant_clause(
-            rule, best_match, rule_result, clauses
+            rule, best_match, rule_result, clauses, status
         )
 
         # Calculate severity
@@ -193,7 +196,7 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
     score_data = calculate_overall_score(
         total_rules=len(all_rules),
         flagged_issues=[
-            {"severity_score": f["severity_score"], "category": f["category"]}
+            {"severity_score": f["severity_score"], "category": f["category"], "status": f["status"]}
             for f in flagged_issues
         ],
         total_clauses=total_clauses,
@@ -286,41 +289,43 @@ def _build_best_semantic_map(semantic_results: list[dict]) -> dict:
     return best
 
 
-def _determine_status(keyword_found: bool, combined_sim: float) -> str | None:
+def _determine_status(keyword_found: bool, combined_sim: float, clause_text: str = "") -> str | None:
     """
     Determine compliance status for one rule.
 
     Returns:
         None if compliant, or "MISSING" / "CONFLICT" / "GAP"
     """
-    if keyword_found and combined_sim >= 0.7:
-        # Keyword present AND strong semantic alignment — compliant
-        return None
-
-    if not keyword_found and combined_sim < 0.4:
-        # No keyword, no semantic similarity — completely missing
-        return "MISSING"
-
-    if keyword_found and combined_sim >= 0.6:
-        # Keyword found but semantic match suggests the clause may
-        # conflict with the requirement (topic match, different stance)
+    text_upper = clause_text.upper()
+    if combined_sim >= 0.35 and ("VIOLATES" in text_upper or "UNLAWFUL" in text_upper or "CONTRARY" in text_upper):
         return "CONFLICT"
 
-    if keyword_found and combined_sim < 0.6:
-        # Keyword found but weak semantic match — partial coverage
+    if keyword_found:
+        # Trust the regex. The policy mentions the law's required keywords.
+        if combined_sim >= 0.40:
+            return None
         return "GAP"
 
-    if not keyword_found and combined_sim >= 0.4:
-        # No exact keyword but semantically related — gap in coverage
-        return "GAP"
+    if not keyword_found:
+        # No exact keywords, but strong semantic match
+        if combined_sim >= 0.70:
+            return None
+        # Moderate semantic match but missing key terminology
+        if combined_sim >= 0.60:
+            return "GAP"
 
     return "MISSING"
 
 
 def _find_relevant_clause(
-    rule, best_match: dict | None, rule_result: dict, clauses: list[dict]
+    rule, best_match: dict | None, rule_result: dict, clauses: list[dict], status: str
 ) -> tuple[str, int]:
     """Find the most relevant clause text and index for a flagged issue."""
+    if status == "MISSING":
+        return (
+            f"[No clause found in document addressing this requirement: "
+            f"{rule.law_name} {rule.section}]"
+        ), 0
     # Prefer semantic match clause (more accurate)
     if best_match and best_match.get("clause_text"):
         text = best_match["clause_text"]

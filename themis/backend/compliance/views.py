@@ -303,6 +303,16 @@ class DashboardStatsView(APIView):
             reports.order_by('-scanned_at')[:5], many=True
         ).data
 
+        category_breakdown = [
+            {"category": cat, "avg_score": count}
+            for cat, count in category_stats.items()
+        ]
+
+        trend_data = [
+            {"date": r.scanned_at.strftime('%Y-%m-%d'), "score": r.overall_score}
+            for r in reports.order_by('scanned_at')[:30]
+        ]
+
         return Response({
             "total_policies_scanned": total_policies,
             "average_compliance_score": round(avg_score, 2),
@@ -310,5 +320,7 @@ class DashboardStatsView(APIView):
             "resolved_issues": resolved_issues,
             "unresolved_issues": unresolved_issues,
             "issues_by_category": category_stats,
+            "category_breakdown": category_breakdown,
+            "trend_data": trend_data,
             "recent_scans": recent,
         })
