@@ -250,5 +250,170 @@
     "expected_status": "COMPLIANT",
     "ground_truth_label": false,
     "notes": "Proper breach notification with timeline"
+  },
+  {
+    "id": 29,
+    "clause_text": "As a startup with fewer than 10 employees, the company is exempt from maintaining a formal Internal Complaints Committee (ICC), and harassment complaints will be addressed directly by the founder.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Open-source Startup Handbook (GitHub)",
+    "category": "negation",
+    "notes": "Under POSH, <10 employees must route to Local Complaints Committee (LCC), NOT founder. Negation + misstatement of law."
+  },
+  {
+    "id": 30,
+    "clause_text": "Employees currently serving their probationary period are not required to be enrolled in the Employees' Provident Fund scheme until their successful confirmation.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Social Security",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Legacy HR Handbook Template",
+    "category": "negation",
+    "notes": "EPF enrollment mandatory from day one including probation. Negation ('are not required') creates direct conflict."
+  },
+  {
+    "id": 31,
+    "clause_text": "This POSH policy does not apply to incidents occurring outside the registered office premises or outside of regular working hours.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Outdated Corporate Handbook",
+    "category": "negation",
+    "notes": "POSH Act defines 'extended workplace' covering transport, offsites, virtual environments. 'Does not apply' contradicts extended workplace definition."
+  },
+  {
+    "id": 32,
+    "clause_text": "The provisions of the Payment of Gratuity Act shall not apply to consultants and independent contractors engaged for a fixed term.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Tech Company Open Policy",
+    "category": "negation",
+    "notes": "Correct statement — gratuity genuinely does not apply to contractors. Negation clause that is actually compliant."
+  },
+  {
+    "id": 33,
+    "clause_text": "Female employees who have worked for at least 80 days in the preceding 12 months are eligible for a maternity leave of approximately 12 weeks.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Pre-2017 Handbook Template (public university HR portal)",
+    "category": "wrong_number",
+    "notes": "Pre-amendment number. 2017 amendment raised from 12 to 26 weeks. Word 'approximately' makes it harder for keyword check."
+  },
+  {
+    "id": 34,
+    "clause_text": "The employee and the employer will each contribute 10% of the basic salary towards the Provident Fund.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Social Security",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "General HR Policy GitHub Gist",
+    "category": "wrong_number",
+    "notes": "Statutory rate is 12%, not 10%. Tests quantity checker: 10 < 12 required_value with comparison_type='min'."
+  },
+  {
+    "id": 35,
+    "clause_text": "Overtime wages will be paid at 1.5 times the normal hourly rate for any work extending beyond 9 hours a day.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Wages",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Standard Manufacturing Standing Orders Draft",
+    "category": "wrong_number",
+    "notes": "Indian law requires 2x (double) not 1.5x. American overtime standard wrongly copied. Tests non-maternity numeric conflict."
+  },
+  {
+    "id": 36,
+    "clause_text": "To be eligible for Gratuity payout, an employee must complete a minimum of 6 years of continuous service with the organization.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Social Security",
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Private Tech Company Handbook",
+    "category": "wrong_number",
+    "notes": "Legal threshold is 5 years, not 6. Off-by-one error. Tests whether engine catches slightly inflated eligibility threshold."
+  },
+  {
+    "id": 37,
+    "clause_text": "Leave encashment upon termination shall be calculated as per Cl. 4(ii)(a) ibid, subject to (a) completion of 240 days service; provided however that... the computation excludes HRA.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Ministry of Labour Draft Model Standing Orders",
+    "category": "messy_format",
+    "notes": "Cross-references, nested clauses, ellipsis mid-sentence. Tests clause extractor handles fragmented legal prose without false flag."
+  },
+  {
+    "id": 38,
+    "clause_text": "Maternity Benefits: As per the Maternity Benefit Act 1961 (amended 2017), the Employee is entitled to • 26 wks leave • medical bonus of Rs 3500/- *subject to revision... if no prenatal confinement provided.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Public University HR Page",
+    "category": "messy_format",
+    "notes": "Bullet fragments mid-sentence, abbreviations ('wks'), dangling asterisk. Correct 26-week figure but messy. Tests clause splitter + quantity extractor."
+  },
+  {
+    "id": 39,
+    "clause_text": "Notwithstanding anything contained hereinabove, the ICC quorum shall consist of 50% members w.r.t the proceedings, sine qua non that the Presiding Officer must be a senior level female employee.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Standard POSH Policy Template",
+    "category": "messy_format",
+    "notes": "Latin ('sine qua non'), legal boilerplate ('notwithstanding'), abbreviations. Compliant content buried in dense formatting."
+  },
+  {
+    "id": 40,
+    "clause_text": "In re: PF deductions - the establishment, being covered under Section 1(3)(b) of the Act, will deduct EPF @ 12% (see sub-sec 2). *Applicable only to basic + DA.",
+    "should_match_law": "Labour Codes, 2020",
+    "should_match_section": "Code on Social Security",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Legacy Trust Deed Document",
+    "category": "messy_format",
+    "notes": "Legal prefix ('In re:'), shorthand symbols ('@', '+'), dangling asterisk. Correct 12% figure. Tests extractor ignores decorative noise."
+  },
+  {
+    "id": 41,
+    "clause_text": "New mothers receive 182 days of fully compensated time off for childbearing purposes.",
+    "should_match_law": "Maternity Benefit Act, 2017 Amendment",
+    "should_match_section": "Section 5(3)",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Modern Startup Handbook (GitHub)",
+    "category": "different_wording",
+    "notes": "182 days = 26 weeks. Zero overlap with law vocabulary ('childbearing' not 'maternity', '182 days' not '26 weeks'). Tests semantic robustness."
+  },
+  {
+    "id": 42,
+    "clause_text": "Upon separation, team members who have crossed the half-decade milestone with us will be awarded a loyalty payout equivalent to half-a-month's base pay for every year spent.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Culture-first Tech Company Notion page",
+    "category": "different_wording",
+    "notes": "'Half-decade' = 5 years gratuity threshold, 'loyalty payout' = gratuity, 'half-a-month base pay' = 15 days wages. Fully compliant, zero jargon match."
+  },
+  {
+    "id": 43,
+    "clause_text": "Our workplace strictly prohibits unwelcome physical, verbal, or visual conduct of a sexual nature, and all such grievances are heard by our internal gender-neutral ethics panel, which is headed by our female VP and includes an external NGO member.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "MNC Global Code of Conduct (Indian annex)",
+    "category": "different_wording",
+    "notes": "'Ethics panel' not 'ICC', 'female VP' satisfies Presiding Officer req, 'external NGO member' satisfies Section 4(1)(c). Tests whether engine recognises structural compliance through paraphrase."
   }
 ]
