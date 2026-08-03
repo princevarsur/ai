@@ -208,6 +208,9 @@ SEED_DATA = [
         ),
         "keywords_regex": r"(26 weeks|twenty.?six weeks|maternity.*leave.*26|maternity benefit.*26)",
         "severity_weight": 10,
+        "required_value": 26.0,
+        "required_unit": "weeks",
+        "comparison_type": "min",
         "template_fix": (
             "Every female employee who has worked for at least 80 days in "
             "the 12 months preceding the expected delivery date is entitled "
@@ -337,6 +340,9 @@ SEED_DATA = [
         ),
         "keywords_regex": r"(timely payment|payment of wages|wage.*7 days|salary.*within|payment.*period)",
         "severity_weight": 8,
+        "required_value": 7.0,
+        "required_unit": "days",
+        "comparison_type": "max",
         "template_fix": (
             "The Company shall ensure that wages are credited to each "
             "employee's designated bank account no later than the 7th day "
@@ -356,6 +362,9 @@ SEED_DATA = [
         ),
         "keywords_regex": r"(provident fund|PF.*12%|EPF|employees.*provident|12%.*basic)",
         "severity_weight": 9,
+        "required_value": 12.0,
+        "required_unit": "percent",
+        "comparison_type": "min",
         "template_fix": (
             "The Company shall deduct and contribute 12% of each eligible "
             "employee's basic wages towards the Employees' Provident Fund "
@@ -375,6 +384,9 @@ SEED_DATA = [
         ),
         "keywords_regex": r"(notice period|termination.*notice|prior (notice|intimation)|30 days.*notice|one month.*notice)",
         "severity_weight": 8,
+        "required_value": 30.0,
+        "required_unit": "days",
+        "comparison_type": "min",
         "template_fix": (
             "Either party may terminate the employment relationship by "
             "providing a minimum of 30 days' written notice or payment of "
@@ -418,6 +430,9 @@ SEED_DATA = [
         ),
         "keywords_regex": r"(CSR|corporate social responsibility|2%.*net profit|social responsibility)",
         "severity_weight": 7,
+        "required_value": 2.0,
+        "required_unit": "percent",
+        "comparison_type": "min",
         "template_fix": (
             "The Company shall constitute a Corporate Social Responsibility "
             "Committee comprising three or more directors, of whom at least "
@@ -504,6 +519,9 @@ class Command(BaseCommand):
                         "keywords_regex": entry["keywords_regex"],
                         "severity_weight": entry["severity_weight"],
                         "template_fix": entry["template_fix"],
+                        "required_value": entry.get("required_value"),
+                        "required_unit": entry.get("required_unit", ""),
+                        "comparison_type": entry.get("comparison_type", "min"),
                         "is_active": True,
                     },
                 )
