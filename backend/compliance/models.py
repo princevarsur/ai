@@ -66,6 +66,29 @@ class FlaggedIssue(models.Model):
     inlegal_similarity = models.FloatField(default=0)
     description = models.TextField(help_text='Human-readable explanation of the issue.')
     is_resolved = models.BooleanField(default=False)
+    # New signals from enhanced detection pipeline
+    nli_label = models.CharField(
+        max_length=20, blank=True,
+        help_text='"contradiction" | "entailment" | "neutral" | "" (not run).',
+    )
+    quantity_conflict = models.BooleanField(
+        default=False,
+        help_text='True when a deterministic numeric conflict was detected.',
+    )
+    # Reviewer feedback for continuous improvement
+    FEEDBACK_CHOICES = [
+        ('correct', 'Correct'),
+        ('incorrect', 'Incorrect'),
+        ('unsure', 'Unsure'),
+    ]
+    user_feedback = models.CharField(
+        max_length=10, choices=FEEDBACK_CHOICES, blank=True,
+        help_text='Reviewer assessment of whether this flag was accurate.',
+    )
+    feedback_note = models.TextField(
+        blank=True,
+        help_text='Optional free-text reason from the reviewer.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

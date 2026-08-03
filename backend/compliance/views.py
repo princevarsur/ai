@@ -312,3 +312,40 @@ class DashboardStatsView(APIView):
             "issues_by_category": category_stats,
             "recent_scans": recent,
         })
+
+
+class FeedbackView(APIView):
+    """
+    PATCH /api/compliance/flags/<id>/feedback/
+    Mark a flagged issue as correct/incorrect/unsure to build a corrections log.
+    Body: {"user_feedback": "correct"|"incorrect"|"unsure", "feedback_note": "..."}
+    """
+
+    def patch(self, request, pk):
+        try:
+            issue = FlaggedIssue.objects.get(
+                pk=pk,
+                report__scanned_by=request.user,
+            )
+        except FlaggedIssue.DoesNotExist:
+            return Response(
+                {"detail": "Flagged issue not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        allowed = {"correct", "incorrect", "unsure"}
+        feedback = request.data.get("user_feedback", "")
+        if feedback and feedback not in allowed:
+            return Response(
+                {"detail": f"user_feedback must be one of: {allowed}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if feedback:
+            issue.user_feedback = feedback
+        note = request.data.get("feedback_note", "")
+        if note:
+            issue.feedback_note = note
+
+        issue.save(update_fields=["user_feedback", "feedback_note"])
+        return Response(FlaggedIssueSerializer(issue).data)

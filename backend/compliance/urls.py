@@ -8,6 +8,7 @@ from .views import (
     ResolveFlagView,
     AccuracyMetricsView,
     DashboardStatsView,
+    FeedbackView,
 )
 
 app_name = 'compliance'
@@ -18,6 +19,7 @@ urlpatterns = [
     path('reports/<int:pk>/', ScanReportDetailView.as_view(), name='report-detail'),
     path('what-if/', WhatIfCheckView.as_view(), name='what-if'),
     path('flags/<int:pk>/resolve/', ResolveFlagView.as_view(), name='resolve-flag'),
+    path('flags/<int:pk>/feedback/', FeedbackView.as_view(), name='feedback'),
     path('accuracy/', AccuracyMetricsView.as_view(), name='accuracy'),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
 ]

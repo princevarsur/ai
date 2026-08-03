@@ -6,8 +6,10 @@ Combines all ML modules into a single scan workflow:
   2. Clause splitting
   3. Rule-based keyword checking
   4. AI semantic matching
-  5. Risk scoring
-  6. DB persistence (ScanReport + FlaggedIssues)
+  5. Quantity check (deterministic numeric conflicts)
+  6. NLI contradiction detection
+  7. Risk scoring
+  8. DB persistence (ScanReport + FlaggedIssues)
 """
 
 import time
@@ -22,8 +24,21 @@ from ml_engine.clause_extractor import extract_clauses, get_clause_stats
 from ml_engine.rule_checker import check_rules, get_rule_check_summary
 from ml_engine.semantic_matcher import precompute_law_embeddings, batch_match_clauses
 from ml_engine.risk_scorer import calculate_issue_severity, calculate_overall_score
+from ml_engine.quantity_checker import check_quantity_conflict
+from ml_engine.contradiction_checker import batch_check_entailment
 
 logger = logging.getLogger(__name__)
+
+# spaCy model for quantity extraction — loaded once
+_nlp = None
+
+
+def _get_nlp():
+    global _nlp
+    if _nlp is None:
+        import spacy
+        _nlp = spacy.load("en_core_web_sm")
+    return _nlp
 
 # ── Law embedding cache (computed once, reused across scans) ─────────────
 
@@ -123,21 +138,27 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
 
     logger.info("Semantic matching complete for %d clauses", len(clauses))
 
-    # ── Step 5-6: Determine status and score each issue ──────────────
+    # ── Step 5-7: Determine status, run quantity+NLI checks, score ───
     all_rules = LegalRule.objects.filter(is_active=True)
     flagged_issues = []
     compliant_count = 0
+    nlp = _get_nlp()
 
     # Track similarity scores for averages
     all_miniml_scores = []
     all_inlegal_scores = []
 
+    # Pre-collect NLI pairs for rules above similarity threshold
+    # (avoids per-call latency — batch at the end)
+    nli_candidates = []   # [(rule_id, clause_text, law_text), ...]
+
+    # First pass: collect candidates for NLI batching
+    rule_data = {}  # rule.id → {keyword_found, best_match, miniml, inlegal, combined}
     for rule in all_rules:
         rule_result = rule_status_map.get(rule.id, {})
         keyword_found = rule_result.get("status") == "PRESENT"
         best_match = best_semantic.get(rule.id)
 
-        # Get similarity scores
         miniml_sim = best_match["miniml_similarity"] if best_match else 0.0
         inlegal_sim = best_match["inlegal_similarity"] if best_match else 0.0
         combined_sim = best_match["combined_score"] if best_match else 0.0
@@ -145,18 +166,93 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
         all_miniml_scores.append(miniml_sim)
         all_inlegal_scores.append(inlegal_sim)
 
-        # Determine issue status
-        status = _determine_status(keyword_found, combined_sim)
+        rule_data[rule.id] = {
+            "rule": rule,
+            "rule_result": rule_result,
+            "keyword_found": keyword_found,
+            "best_match": best_match,
+            "miniml_sim": miniml_sim,
+            "inlegal_sim": inlegal_sim,
+            "combined_sim": combined_sim,
+        }
 
-        if status is None:
-            # COMPLIANT — keyword found AND strong semantic match
-            compliant_count += 1
-            continue
+        # Collect for NLI if semantically relevant (combined > 0.3)
+        if combined_sim >= 0.3 and best_match:
+            clause_text = best_match["clause_text"]
+            nli_candidates.append((rule.id, clause_text, rule.requirement_text))
 
-        # Find the clause text that triggered this
+    # Batch NLI inference for all candidates in one call
+    nli_pairs = [(clause, law) for _, clause, law in nli_candidates]
+    nli_results = batch_check_entailment(nli_pairs)
+    nli_map = {}
+    for (rule_id, _, _), nli_result in zip(nli_candidates, nli_results):
+        nli_map[rule_id] = nli_result
+
+    # Second pass: make decisions
+    for rule in all_rules:
+        rd = rule_data[rule.id]
+        keyword_found = rd["keyword_found"]
+        best_match = rd["best_match"]
+        combined_sim = rd["combined_sim"]
+        miniml_sim = rd["miniml_sim"]
+        inlegal_sim = rd["inlegal_sim"]
+        rule_result = rd["rule_result"]
+        nli_result = nli_map.get(rule.id)
+
         clause_text, clause_index = _find_relevant_clause(
             rule, best_match, rule_result, clauses
         )
+
+        status = None
+        nli_label = ""
+        qty_conflict = False
+        catch_signal = "similarity"
+
+        # ── Priority 1: Quantity check (deterministic) ────────────────
+        if rule.required_value is not None and combined_sim >= 0.3:
+            qty = check_quantity_conflict(
+                clause_text,
+                rule.required_value,
+                rule.required_unit,
+                rule.comparison_type,
+                nlp,
+            )
+            if qty["has_quantity"]:
+                if qty["is_conflict"]:
+                    status = "CONFLICT"
+                    qty_conflict = True
+                    catch_signal = "quantity check"
+                else:
+                    # Number is correct — rule is satisfied
+                    status = None  # COMPLIANT
+                    compliant_count += 1
+                    continue
+
+        # ── Priority 2: NLI contradiction/entailment ──────────────────
+        if status is None and nli_result is not None:
+            nli_label = nli_result["label"]
+            nli_conf = nli_result["confidence"]
+
+            if nli_label == "contradiction":
+                status = "CONFLICT"
+                catch_signal = f"NLI contradiction (confidence {nli_conf:.0%})"
+            elif nli_label == "entailment" and combined_sim >= 0.6:
+                # Entailed and strong similarity → compliant
+                compliant_count += 1
+                continue
+            elif nli_label == "neutral" or (
+                nli_label == "entailment" and combined_sim < 0.6
+            ):
+                status = "GAP"
+                catch_signal = "NLI neutral / low similarity"
+
+        # ── Priority 3: Similarity + keyword fallback ─────────────────
+        if status is None:
+            status = _determine_status(keyword_found, combined_sim)
+
+        if status is None:
+            compliant_count += 1
+            continue
 
         # Calculate severity
         severity = calculate_issue_severity(
@@ -166,10 +262,10 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             keyword_found=keyword_found,
         )
 
-        # Generate human-readable description
+        # Generate description mentioning which signal caught the issue
         description = _generate_description(
             rule, status, keyword_found, combined_sim,
-            clause_text, rule_result,
+            clause_text, rule_result, catch_signal, nli_result,
         )
 
         flagged_issues.append({
@@ -182,6 +278,8 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             "inlegal_similarity": inlegal_sim,
             "description": description,
             "category": rule.category,
+            "nli_label": nli_label,
+            "quantity_conflict": qty_conflict,
         })
 
     logger.info(
@@ -238,6 +336,8 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             miniml_similarity=fi["miniml_similarity"],
             inlegal_similarity=fi["inlegal_similarity"],
             description=fi["description"],
+            nli_label=fi.get("nli_label", ""),
+            quantity_conflict=fi.get("quantity_conflict", False),
             is_resolved=False,
         ))
 
@@ -288,30 +388,25 @@ def _build_best_semantic_map(semantic_results: list[dict]) -> dict:
 
 def _determine_status(keyword_found: bool, combined_sim: float) -> str | None:
     """
-    Determine compliance status for one rule.
+    Similarity + keyword fallback — only called after quantity and NLI checks
+    have had first priority.
 
     Returns:
         None if compliant, or "MISSING" / "CONFLICT" / "GAP"
     """
     if keyword_found and combined_sim >= 0.7:
-        # Keyword present AND strong semantic alignment — compliant
-        return None
+        return None  # COMPLIANT
 
     if not keyword_found and combined_sim < 0.4:
-        # No keyword, no semantic similarity — completely missing
         return "MISSING"
 
     if keyword_found and combined_sim >= 0.6:
-        # Keyword found but semantic match suggests the clause may
-        # conflict with the requirement (topic match, different stance)
         return "CONFLICT"
 
     if keyword_found and combined_sim < 0.6:
-        # Keyword found but weak semantic match — partial coverage
         return "GAP"
 
     if not keyword_found and combined_sim >= 0.4:
-        # No exact keyword but semantically related — gap in coverage
         return "GAP"
 
     return "MISSING"
@@ -353,26 +448,36 @@ def _generate_description(
     combined_sim: float,
     clause_text: str,
     rule_result: dict,
+    catch_signal: str = "similarity",
+    nli_result: dict | None = None,
 ) -> str:
-    """Generate human-readable description of a flagged issue."""
+    """Generate human-readable description mentioning which signal caught the issue."""
     law_ref = f"{rule.law_name} {rule.section}"
+    signal_note = f"(Caught by: {catch_signal})"
 
     if status == "MISSING":
         return (
             f"The policy does not address the requirement under {law_ref}. "
             f"This section requires: {rule.requirement_text[:200]}. "
             f"No matching keywords or semantically similar clauses were "
-            f"found in the document."
+            f"found in the document. {signal_note}"
         )
 
     if status == "CONFLICT":
-        # Show what the policy says vs what the law requires
         clause_preview = clause_text[:150].replace("\n", " ")
+        if nli_result and nli_result["label"] == "contradiction":
+            conf_pct = f"{nli_result['confidence']:.0%}"
+            return (
+                f"Direct contradiction detected with {law_ref}. "
+                f"The policy states: \"{clause_preview}\" — this directly "
+                f"contradicts the requirement: \"{rule.requirement_text[:150]}...\" "
+                f"{signal_note}, confidence {conf_pct}."
+            )
         return (
-            f"Potential conflict detected with {law_ref}. "
+            f"Conflict detected with {law_ref}. "
             f"The policy states: \"{clause_preview}...\" "
             f"However, the law requires: \"{rule.requirement_text[:150]}...\" "
-            f"(Semantic similarity: {combined_sim:.0%})"
+            f"(Semantic similarity: {combined_sim:.0%}) {signal_note}"
         )
 
     if status == "GAP":
@@ -387,7 +492,7 @@ def _generate_description(
             f"{kw_note}, but the coverage appears incomplete. "
             f"The policy mentions: \"{clause_preview}...\" "
             f"The full requirement is: \"{rule.requirement_text[:150]}...\" "
-            f"(Semantic similarity: {combined_sim:.0%})"
+            f"(Semantic similarity: {combined_sim:.0%}) {signal_note}"
         )
 
-    return f"Issue flagged for {law_ref}: {rule.requirement_text[:200]}"
+    return f"Issue flagged for {law_ref}: {rule.requirement_text[:200]} {signal_note}"
