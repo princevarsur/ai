@@ -29,6 +29,36 @@ from ml_engine.contradiction_checker import batch_check_entailment
 
 logger = logging.getLogger(__name__)
 
+# ── Decision model (trained LogisticRegression) ───────────────────────────
+# Loaded lazily — falls back to threshold logic if model file absent.
+# Re-train with: python ml_engine/decision_model.py
+
+from pathlib import Path as _Path
+import numpy as _np
+
+_DECISION_MODEL_PATH = _Path(__file__).resolve().parent.parent / "data" / "decision_model.joblib"
+_decision_model = None
+_decision_model_loaded = False  # tracks whether load was attempted
+
+
+def _get_decision_model():
+    """Lazy-load saved LogisticRegression. Returns None if not found."""
+    global _decision_model, _decision_model_loaded
+    if _decision_model_loaded:
+        return _decision_model
+    _decision_model_loaded = True
+    if _DECISION_MODEL_PATH.exists():
+        try:
+            import joblib
+            _decision_model = joblib.load(_DECISION_MODEL_PATH)
+            logger.info("Decision model loaded from %s", _DECISION_MODEL_PATH)
+        except Exception as e:
+            logger.warning("Could not load decision model: %s", e)
+            _decision_model = None
+    else:
+        logger.info("No decision model found — using threshold pipeline")
+    return _decision_model
+
 # spaCy model for quantity extraction — loaded once
 _nlp = None
 
@@ -189,6 +219,7 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
         nli_map[rule_id] = nli_result
 
     # Second pass: make decisions
+    decision_model = _get_decision_model()
     for rule in all_rules:
         rd = rule_data[rule.id]
         keyword_found = rd["keyword_found"]
@@ -204,11 +235,11 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
         )
 
         status = None
-        nli_label = ""
+        nli_label = nli_result["label"] if nli_result else ""
         qty_conflict = False
         catch_signal = "similarity"
 
-        # ── Priority 1: Quantity check (deterministic) ────────────────
+        # ── Always run quantity check (deterministic, high precision) ────
         if rule.required_value is not None and combined_sim >= 0.3:
             qty = check_quantity_conflict(
                 clause_text,
@@ -223,32 +254,54 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
                     qty_conflict = True
                     catch_signal = "quantity check"
                 else:
-                    # Number is correct — rule is satisfied
-                    status = None  # COMPLIANT
                     compliant_count += 1
                     continue
 
-        # ── Priority 2: NLI contradiction/entailment ──────────────────
-        if status is None and nli_result is not None:
-            nli_label = nli_result["label"]
-            nli_conf = nli_result["confidence"]
-
-            if nli_label == "contradiction":
-                status = "CONFLICT"
-                catch_signal = f"NLI contradiction (confidence {nli_conf:.0%})"
-            elif nli_label == "entailment" and combined_sim >= 0.6:
-                # Entailed and strong similarity → compliant
-                compliant_count += 1
-                continue
-            elif nli_label == "neutral" or (
-                nli_label == "entailment" and combined_sim < 0.6
-            ):
-                status = "GAP"
-                catch_signal = "NLI neutral / low similarity"
-
-        # ── Priority 3: Similarity + keyword fallback ─────────────────
+        # ── Decision: trained classifier or threshold fallback ────────────
         if status is None:
-            status = _determine_status(keyword_found, combined_sim)
+            if decision_model is not None:
+                # Assemble feature vector matching decision_model.py training
+                nli_contra = nli_result["raw_scores"]["contradiction"] if nli_result else 0.0
+                nli_entail = nli_result["raw_scores"]["entailment"] if nli_result else 0.0
+                nli_neut = nli_result["raw_scores"]["neutral"] if nli_result else 1.0
+                feat = _np.array([[miniml_sim, inlegal_sim, nli_contra,
+                                   nli_entail, nli_neut,
+                                   float(qty_conflict), float(keyword_found)]])
+                is_flagged = bool(decision_model.predict(feat)[0])
+                catch_signal = "decision model"
+
+                if not is_flagged:
+                    compliant_count += 1
+                    continue
+
+                # Determine status label from NLI + quantity signals
+                if nli_label == "contradiction" or qty_conflict:
+                    status = "CONFLICT"
+                elif keyword_found:
+                    status = "GAP"
+                else:
+                    status = "MISSING"
+
+            else:
+                # ── Threshold fallback (priority chain) ──────────────────
+                # Priority 2: NLI contradiction/entailment
+                if nli_result is not None:
+                    nli_conf = nli_result["confidence"]
+                    if nli_label == "contradiction":
+                        status = "CONFLICT"
+                        catch_signal = f"NLI contradiction (confidence {nli_conf:.0%})"
+                    elif nli_label == "entailment" and combined_sim >= 0.6:
+                        compliant_count += 1
+                        continue
+                    elif nli_label == "neutral" or (
+                        nli_label == "entailment" and combined_sim < 0.6
+                    ):
+                        status = "GAP"
+                        catch_signal = "NLI neutral / low similarity"
+
+                # Priority 3: Similarity + keyword fallback
+                if status is None:
+                    status = _determine_status(keyword_found, combined_sim)
 
         if status is None:
             compliant_count += 1
