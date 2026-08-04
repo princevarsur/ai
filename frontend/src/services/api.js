@@ -124,7 +124,7 @@ export const lawsAPI = {
 // ── Reports / PDF ─────────────────────────────────────────────────
 export const reportsAPI = {
   downloadPdf: (reportId) =>
-    api.get(`/compliance/reports/${reportId}/pdf/`, { responseType: 'blob' }),
+    api.get(`/reports/${reportId}/pdf/`, { responseType: 'blob' }),
 };
 
 export default api;

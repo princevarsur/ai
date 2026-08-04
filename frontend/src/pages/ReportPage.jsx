@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Table, Modal, Collapse, Tag, Progress, Badge, Skeleton, message } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
-import { complianceAPI } from '../services/api';
+import { complianceAPI, reportsAPI } from '../services/api';
 import ThemisMark from '../components/ThemisMark';
 
 // Helper for score colors: 0-39 = red, 40-69 = amber, 70-100 = green
@@ -55,6 +55,7 @@ export default function ReportPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [rescanning, setRescanning] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Modal inspection state
   const [activeIssue, setActiveIssue] = useState(null);
@@ -118,10 +119,28 @@ export default function ReportPage() {
     }
   }
 
-  // ── Handle PDF Download (Stub handler) ──────────────────────────
-  function handleDownloadPDF() {
-    // Backend PDF routing is currently scheduled for Phase 14
-    message.info('PDF Report export engine is queued for Phase 14 deployment.');
+  // ── Handle PDF Download ─────────────────────────────────────────
+  async function handleDownloadPDF() {
+    if (!report || !report.id) return;
+    setDownloading(true);
+    message.loading({ content: 'Generating professional PDF report...', key: 'pdf_download', duration: 0 });
+    try {
+      const res = await reportsAPI.downloadPdf(report.id);
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const fileName = `THEMIS_Compliance_Report_${report.id}.pdf`;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      message.success({ content: 'PDF report downloaded successfully!', key: 'pdf_download', duration: 3 });
+    } catch (err) {
+      message.error({ content: 'Failed to generate PDF report. Please try again.', key: 'pdf_download', duration: 3 });
+    } finally {
+      setDownloading(false);
+    }
   }
 
   // ── Handle Copy Template Fix ────────────────────────────────────
@@ -452,8 +471,8 @@ export default function ReportPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid var(--hairline)' }}>
         <Link to="/dashboard" className="btn btn-secondary">&larr; Back to Dashboard</Link>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button type="button" className="btn btn-secondary" onClick={handleDownloadPDF}>
-            Download PDF Report
+          <button type="button" className="btn btn-secondary" onClick={handleDownloadPDF} disabled={downloading} style={{ opacity: downloading ? 0.7 : 1 }}>
+            {downloading ? 'Generating PDF...' : 'Download PDF Report'}
           </button>
           <button type="button" className="btn btn-primary" onClick={handleRescan}>
             Re-scan Policy
