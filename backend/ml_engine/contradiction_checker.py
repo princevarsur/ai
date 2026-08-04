@@ -34,7 +34,7 @@ LABEL_MAPPING = ["contradiction", "entailment", "neutral"]
 # ─── Core functions ───────────────────────────────────────────────────────
 
 
-def check_entailment(clause_text: str, law_requirement_text: str) -> dict:
+def check_entailment(clause_text: str, law_requirement_text: str, clause_as_premise: bool = False) -> dict:
     """
     Run the NLI model on (clause_text, law_requirement_text).
 
@@ -44,6 +44,7 @@ def check_entailment(clause_text: str, law_requirement_text: str) -> dict:
     Args:
         clause_text: The policy clause (hypothesis).
         law_requirement_text: The legal requirement (premise).
+        clause_as_premise: When checking element satisfaction, clause is premise and requirement is hypothesis.
 
     Returns:
         {
@@ -63,8 +64,8 @@ def check_entailment(clause_text: str, law_requirement_text: str) -> dict:
             "raw_scores": {"contradiction": 0.0, "entailment": 0.0, "neutral": 1.0},
         }
 
-    # CrossEncoder takes (premise, hypothesis) — law is premise, clause is hypothesis
-    raw = nli_model.predict([(law_requirement_text, clause_text)])
+    pair = (clause_text, law_requirement_text) if clause_as_premise else (law_requirement_text, clause_text)
+    raw = nli_model.predict([pair])
     scores = _softmax(raw[0])
 
     best_idx = int(np.argmax(scores))
@@ -82,17 +83,14 @@ def check_entailment(clause_text: str, law_requirement_text: str) -> dict:
     }
 
 
-def batch_check_entailment(pairs: list[tuple[str, str]]) -> list[dict]:
+def batch_check_entailment(pairs: list[tuple[str, str]], clause_as_premise: bool = False) -> list[dict]:
     """
-    Batch NLI inference — always use this in the real pipeline, not
-    one-by-one calls. 10-30x faster for large clause sets.
-
-    Args:
-        pairs: List of (clause_text, law_requirement_text) tuples.
+    Run NLI over a list of (clause_text, law_requirement_text) pairs in one batch.
+    Faster than calling check_entailment in a loop.
 
     Returns:
         List of result dicts matching check_entailment() format,
-        in the same order as input pairs.
+        in the same order as `pairs`.
     """
     if not pairs:
         return []
@@ -112,7 +110,7 @@ def batch_check_entailment(pairs: list[tuple[str, str]]) -> list[dict]:
         ]
 
     # Flip to (premise=law, hypothesis=clause) for each pair
-    model_pairs = [(law, clause) for clause, law in pairs]
+    model_pairs = [(clause, law) if clause_as_premise else (law, clause) for clause, law in pairs]
     raw_batch = nli_model.predict(model_pairs)
 
     results = []

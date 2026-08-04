@@ -34,6 +34,7 @@ from ml_engine.semantic_matcher import precompute_law_embeddings, batch_match_cl
 from ml_engine.risk_scorer import calculate_issue_severity, calculate_overall_score
 from ml_engine.quantity_checker import check_quantity_conflict
 from ml_engine.contradiction_checker import batch_check_entailment
+from ml_engine.element_checker import check_elements
 
 logger = logging.getLogger(__name__)
 
@@ -398,98 +399,67 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
 
         status = None
 
-        # ── Check 1: Deterministic quantity conflict (high precision) ──
-        if rule.required_value is not None:
-            qty = check_quantity_conflict(
-                clause_text,
-                rule.required_value,
-                rule.required_unit,
-                rule.comparison_type,
-                nlp,
-            )
-            if qty["has_quantity"]:
-                if qty["is_conflict"]:
-                    status = "CONFLICT"
-                    qty_conflict = True
-                    catch_signal = "quantity check"
-                else:
-                    # Quantity matches — this requirement is satisfied
-                    compliant_count += 1
-                    continue
+        # ── Check 1: Deterministic high-risk legal concept antipatterns ─
+        hr_status, hr_signal = _check_high_risk_conflict(clause_text, rule)
+        if hr_status is not None:
+            status = hr_status
+            catch_signal = hr_signal
+            element_results = []
+            coverage_fraction = 0.0
+            any_contradiction = True
+        else:
+            # ── Check 2: Element-level checklist matching ──────────────────
+            req_elems = rule.required_elements if rule.required_elements else [{"id": "element_1", "text": rule.requirement_text}]
+            elem_res = check_elements(clause_text, req_elems, nlp=nlp, comparison_type=rule.comparison_type)
+            element_results = elem_res["elements"]
+            coverage_fraction = elem_res["coverage_fraction"]
+            any_contradiction = elem_res["any_contradiction"]
 
-        # ── Check 1B: Deterministic high-risk legal concept antipatterns ─
-        if status is None:
-            hr_status, hr_signal = _check_high_risk_conflict(clause_text, rule)
-            if hr_status is not None:
-                status = hr_status
-                catch_signal = hr_signal
+            qty_conflict = any(el["method"] == "quantity" and el["contradicted"] for el in element_results)
 
-        # ── Check 2: NLI-based decision tree (the shipped logic) ──────
-        if status is None and nli_result is not None:
-            nli_conf = nli_result["confidence"]
-
-            if nli_label == "contradiction":
-                if _is_deferral_clause(clause_text):
-                    # Clause explicitly defers to law — cannot contradict
-                    # what it defers to. NLI is wrong. Treat as COMPLIANT.
-                    compliant_count += 1
-                    continue
-                elif is_strong and miniml_sim >= 0.46 and (keyword_found or miniml_sim >= 0.52):
-                    # High similarity + NLI contradiction + no deferral = real conflict
-                    if ("dpdp" in rule_law or "it act" in rule_law) and miniml_sim < 0.52 and not keyword_found:
-                        if not keyword_found:
-                            continue
-                        status = "GAP"
-                        catch_signal = f"NLI contradiction downgraded to GAP (OOD domain miniml={miniml_sim:.2f})"
-                    else:
-                        status = "CONFLICT"
-                        catch_signal = f"NLI contradiction (confidence {nli_conf:.0%}, strong match)"
-                else:
-                    # Below STRONG_MATCH or weak topical alignment: NLI unreliable on OOD texts
-                    if not keyword_found and combined_sim < 0.70:
-                        continue
+            if any_contradiction:
+                if _is_deferral_clause(clause_text) and not qty_conflict:
                     status = "GAP"
-                    catch_signal = f"NLI contradiction downgraded to GAP (combined {combined_sim:.3f} < {STRONG_MATCH})"
-
-            elif nli_label == "entailment" and combined_sim >= 0.6:
-                # Strong entailment + high similarity = COMPLIANT
-                compliant_count += 1
-                continue
-
-            elif nli_label == "neutral" or (
-                nli_label == "entailment" and combined_sim < 0.6
-            ):
-                if _is_deferral_clause(clause_text):
-                    compliant_count += 1
+                    catch_signal = "NLI contradiction on deferral clause treated as GAP"
+                else:
+                    status = "CONFLICT"
+                    catch_signal = "element-level contradiction"
+            elif coverage_fraction == 1.0:
+                status = "COMPLIANT"
+            elif coverage_fraction == 0.0:
+                if _is_deferral_clause(clause_text) and not qty_conflict:
+                    status = "COMPLIANT"
+                elif not keyword_found and combined_sim < 0.70:
                     continue
-                # Topical Relevance Gate: without matching statutory topic keywords, a neutral NLI result
-                # is just general HR legal language overlap. Never flag a GAP without actual keywords present.
-                if not keyword_found:
-                    continue
+                else:
+                    status = "MISSING"
+                    catch_signal = "element-level missing (0% coverage)"
+            else:
                 status = "GAP"
-                catch_signal = "NLI neutral / weak entailment on covered topic"
+                catch_signal = f"element-level gap ({coverage_fraction:.0%} coverage)"
 
-        # ── Check 3: Keyword + similarity fallback ────────────────────
-        if status is None:
-            status = _determine_status(keyword_found, combined_sim)
-
-        # ── If still None after all checks, treat as compliant ────────
-        if status is None:
+        # ── If compliant or skipped, proceed ──────────────────────────
+        if status == "COMPLIANT" or status is None:
             compliant_count += 1
             continue
 
-        # ── Calculate severity (scaled by status) ─────────────────────
-        severity = calculate_issue_severity(
+        # ── Calculate severity (scaled by 1 - coverage_fraction) ─────
+        base_severity = calculate_issue_severity(
             rule_status=status,
             max_similarity=combined_sim,
             severity_weight=rule.severity_weight,
             keyword_found=keyword_found,
         )
+        if status == "CONFLICT":
+            severity = base_severity
+        else:
+            severity = int(round(max(10, min(100, base_severity * (1.0 - coverage_fraction)))))
 
-        # Generate description mentioning which signal caught the issue
+        # Generate description mentioning which signal caught the issue and element breakdown
         description = _generate_description(
             rule, status, keyword_found, combined_sim,
             clause_text, rule_result, catch_signal, nli_result,
+            element_results=element_results, coverage_fraction=coverage_fraction
         )
 
         flagged_issues.append({
@@ -504,6 +474,8 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             "category": rule.category,
             "nli_label": nli_label,
             "quantity_conflict": qty_conflict,
+            "element_results": element_results,
+            "coverage_fraction": coverage_fraction,
         })
 
     logger.info(
@@ -591,6 +563,8 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             description=fi["description"],
             nli_label=fi.get("nli_label", ""),
             quantity_conflict=fi.get("quantity_conflict", False),
+            element_results=fi.get("element_results", []),
+            coverage_fraction=fi.get("coverage_fraction", 0.0),
             is_resolved=False,
         ))
 
@@ -687,10 +661,30 @@ def _generate_description(
     rule_result: dict,
     catch_signal: str = "similarity",
     nli_result: dict | None = None,
+    element_results: list[dict] | None = None,
+    coverage_fraction: float = 0.0,
 ) -> str:
     """Generate human-readable description mentioning which signal caught the issue."""
     law_ref = f"{rule.law_name} {rule.section}"
     signal_note = f"(Caught by: {catch_signal})"
+
+    if element_results and len(element_results) > 1:
+        found_elems = [el for el in element_results if el.get("found")]
+        missing_elems = [el for el in element_results if not el.get("found") and not el.get("contradicted")]
+        contra_elems = [el for el in element_results if el.get("contradicted")]
+
+        parts = []
+        if found_elems:
+            parts.append("Confirms: " + "; ".join(el["text"] for el in found_elems).rstrip(".") + ".")
+        if contra_elems:
+            parts.append("Contradicts: " + "; ".join(el["text"] for el in contra_elems).rstrip(".") + ".")
+        if missing_elems:
+            missing_names = [el.get("id", "").replace("_", " ").title() if el.get("id") else el["text"][:30] for el in missing_elems]
+            parts.append("Does not specify: " + ", ".join(missing_names) + ".")
+
+        summary_line = f"({len(found_elems)} of {len(element_results)} required elements addressed)"
+        desc = " ".join(parts) + " " + summary_line if parts else f"Issue flagged for {law_ref}."
+        return f"{desc} {signal_note}"
 
     if status == "MISSING":
         return (

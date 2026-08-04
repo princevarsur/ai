@@ -47,6 +47,10 @@ class LegalRule(models.Model):
         max_length=10, choices=COMPARISON_TYPE_CHOICES, default='min',
         help_text='How to compare: at least / at most / exactly.',
     )
+    required_elements = models.JSONField(
+        default=list,
+        help_text='List of required sub-element check dicts: [{"id": str, "text": str, "weight": float}].',
+    )
     embedding_cached = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

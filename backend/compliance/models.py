@@ -75,6 +75,14 @@ class FlaggedIssue(models.Model):
         default=False,
         help_text='True when a deterministic numeric conflict was detected.',
     )
+    element_results = models.JSONField(
+        default=list,
+        help_text='List of sub-element evaluation results: [{"id", "text", "found", "contradicted", "method"}].',
+    )
+    coverage_fraction = models.FloatField(
+        default=0.0,
+        help_text='Weighted percentage of required sub-elements satisfied (0.0 to 1.0).',
+    )
     # Reviewer feedback for continuous improvement
     FEEDBACK_CHOICES = [
         ('correct', 'Correct'),

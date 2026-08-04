@@ -23,6 +23,12 @@ SEED_DATA = [
             "Internal Complaints Committee (ICC) with a Presiding Officer, "
             "employee members, and an external member."
         ),
+        "required_elements": [
+            {"id": "icc_exists", "text": "Company has constituted an Internal Complaints Committee", "weight": 1.0},
+            {"id": "presiding_officer", "text": "ICC has a Presiding Officer who is a senior woman employee", "weight": 1.0},
+            {"id": "employee_members", "text": "ICC has at least two employee members committed to the cause of women", "weight": 1.0},
+            {"id": "external_member", "text": "ICC has one external member from an NGO or association", "weight": 1.0}
+        ],
         "keywords_regex": r"(internal complaints? committee|ICC|complaints? committee|presiding officer)",
         "severity_weight": 10,
         "template_fix": (
@@ -82,6 +88,10 @@ SEED_DATA = [
             "and the employer must act on the ICC recommendations within "
             "60 days of receiving the report."
         ),
+        "required_elements": [
+            {"id": "inquiry_90_days", "text": "The inquiry into a complaint must be completed within 90 days", "weight": 1.0},
+            {"id": "action_60_days", "text": "Employer must act on the ICC recommendations within 60 days", "weight": 1.0}
+        ],
         "keywords_regex": r"(60 days|sixty days|time.?bound|inquiry.*complete)",
         "severity_weight": 8,
         "template_fix": (
@@ -105,6 +115,10 @@ SEED_DATA = [
             "specific, informed, and unambiguous consent from the Data "
             "Principal for a specified purpose."
         ),
+        "required_elements": [
+            {"id": "explicit_consent", "text": "Personal data processing requires free specific informed and unambiguous consent", "weight": 1.0},
+            {"id": "specified_purpose", "text": "Consent notice must clearly specify the purpose of data collection", "weight": 1.0}
+        ],
         "keywords_regex": r"(explicit consent|informed consent|data principal.*consent|freely given.*consent|consent.*purpose)",
         "severity_weight": 10,
         "template_fix": (
@@ -896,6 +910,7 @@ class Command(BaseCommand):
                         "required_value": entry.get("required_value"),
                         "required_unit": entry.get("required_unit", ""),
                         "comparison_type": entry.get("comparison_type", "min"),
+                        "required_elements": entry.get("required_elements") or [{"id": "element_1", "text": entry["requirement_text"], "weight": 1.0}],
                         "is_active": True,
                     },
                 )
