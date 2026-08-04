@@ -9,6 +9,8 @@ import DashboardPage from './pages/DashboardPage';
 import UploadPage   from './pages/UploadPage';
 import ReportPage   from './pages/ReportPage';
 import WhatIfPage   from './pages/WhatIfPage';
+import ScanHistoryPage from './pages/ScanHistoryPage';
+import LawDatabasePage from './pages/LawDatabasePage';
 
 export default function App() {
   return (
@@ -36,6 +38,22 @@ export default function App() {
           }
         />
         <Route
+          path="/history"
+          element={
+            <PrivateRoute>
+              <Layout><ScanHistoryPage /></Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <PrivateRoute>
+              <Layout><ScanHistoryPage /></Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/reports/:id"
           element={
             <PrivateRoute>
@@ -48,6 +66,22 @@ export default function App() {
           element={
             <PrivateRoute>
               <Layout><WhatIfPage /></Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/laws"
+          element={
+            <PrivateRoute>
+              <Layout><LawDatabasePage /></Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/law"
+          element={
+            <PrivateRoute>
+              <Layout><LawDatabasePage /></Layout>
             </PrivateRoute>
           }
         />

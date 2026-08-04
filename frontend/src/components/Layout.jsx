@@ -38,10 +38,11 @@ export default function Layout({ children }) {
         {/* Content */}
         <main style={{
           flex: 1,
-          padding: '32px',
+          padding: '36px 48px',
           background: 'var(--bg)',
           overflowY: 'auto',
-          maxWidth: 1100,
+          maxWidth: 1540,
+          margin: '0 auto',
           width: '100%',
         }}>
           {children}

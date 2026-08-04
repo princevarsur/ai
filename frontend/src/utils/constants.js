@@ -44,7 +44,7 @@ export const CATEGORY_LABELS = {
 export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard',       icon: 'grid' },
   { path: '/upload',    label: 'Upload Policy',   icon: 'upload' },
-  { path: '/reports',   label: 'Scan History',    icon: 'file-text' },
+  { path: '/history',   label: 'Scan History',    icon: 'file-text' },
   { path: '/what-if',   label: 'What-If Checker', icon: 'search' },
   { path: '/laws',      label: 'Law Database',    icon: 'book' },
 ];
