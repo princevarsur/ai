@@ -201,9 +201,10 @@ SEED_DATA = [
         "template_fix": (
             "In the event of a personal data breach, the Company shall "
             "notify the Data Protection Board of India and all affected "
-            "Data Principals within 72 hours of becoming aware of the "
-            "breach. The notification shall include the nature and extent "
-            "of the breach, data compromised, and remedial measures taken."
+            "Data Principals without unreasonable delay in accordance with "
+            "prescribed statutory timelines. The notification shall include "
+            "the nature and extent of the breach, data compromised, and "
+            "remedial measures taken."
         ),
     },
 

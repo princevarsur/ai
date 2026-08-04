@@ -35,6 +35,13 @@ from ml_engine.risk_scorer import calculate_issue_severity, calculate_overall_sc
 from ml_engine.quantity_checker import check_quantity_conflict
 from ml_engine.contradiction_checker import batch_check_entailment
 from ml_engine.element_checker import check_elements
+from ml_engine.gliner_extractor import check_gliner_compliance_override
+from ml_engine.domain_classifier import (
+    classify_document_domain,
+    is_rule_in_document_scope,
+    check_clause_topical_alignment,
+    verify_real_contradiction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -240,6 +247,9 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
         policy.extracted_text = full_text
         policy.file_type = extraction["file_type"]
 
+    doc_domains = classify_document_domain(f"{policy.title} {policy.file.name}", full_text)
+    logger.info("Classified policy document domains: %s", doc_domains)
+
     # ── Step 2: Split into clauses ───────────────────────────────────
     clauses = extract_clauses(full_text)
     clause_stats = get_clause_stats(clauses)
@@ -362,6 +372,10 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
                 f"clears_floor={clears_floor}"
             )
 
+        # ── Document Domain Filter: skip rules out of document scope ────
+        if not is_rule_in_document_scope(rule.category, doc_domains):
+            continue
+
         # ── RELEVANCE FLOOR: skip unrelated pairs entirely ───────────
         if not clears_floor:
             # Nothing in the document is topically related to this rule.
@@ -374,28 +388,9 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             rule, best_match, rule_result, clauses
         )
 
-        # ── Domain boundary protection: ensure statutory category aligns with clause terminology
-        clause_low = clause_text.lower()
-        rule_law = rule.law_name.lower()
-        rule_req = rule.requirement_text.lower()
-        if "posh" in rule_law or "sexual harassment" in rule_req:
-            if not any(w in clause_low for w in ["posh", "harassment", "sexual", "woman", "women", "icc", "internal committee", "gender", "aggrieved", "respondent"]):
-                continue
-        elif "maternity" in rule_law or "creche" in rule_req:
-            if not any(w in clause_low for w in ["maternity", "pregnancy", "creche", "nursing", "mother", "maternal", "child", "woman", "women"]):
-                continue
-        elif "dpdp" in rule_law or "data protection" in rule_law:
-            if not any(w in clause_low for w in ["data", "privacy", "personal", "confidentiality", "processing", "aadhaar", "biometric", "security", "cyber", "record", "retention", "gdpr", "dpdp", "consent"]):
-                continue
-        elif "it act" in rule_law or "information technology" in rule_law:
-            if not any(w in clause_low for w in ["it act", "information technology", "cyber", "computer", "network", "electronic", "digital", "internet", "software", "hardware", "website", "intermediary", "portal"]):
-                continue
-        elif "contract act" in rule_law or "non-compete" in rule_req or "restraint" in rule_req:
-            if not any(w in clause_low for w in ["compete", "competitor", "restraint", "prohibit", "restriction", "post-termination", "working after", "joining"]):
-                continue
-        elif "trade union" in rule_req or "collective action" in rule_req or "section 4" in rule.section.lower():
-            if not any(w in clause_low for w in ["union", "collective", "association", "organization", "group activity", "strike"]):
-                continue
+        # ── Granular Topical Alignment Gate: prevent semantic hallucinations ─
+        if not check_clause_topical_alignment(clause_text, rule):
+            continue
 
         status = None
 
@@ -408,12 +403,21 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             coverage_fraction = 0.0
             any_contradiction = True
         else:
-            # ── Check 2: Element-level checklist matching ──────────────────
-            req_elems = rule.required_elements if rule.required_elements else [{"id": "element_1", "text": rule.requirement_text}]
-            elem_res = check_elements(clause_text, req_elems, nlp=nlp, comparison_type=rule.comparison_type)
-            element_results = elem_res["elements"]
-            coverage_fraction = elem_res["coverage_fraction"]
-            any_contradiction = elem_res["any_contradiction"]
+            # ── Check 1.5: GLiNER Zero-Shot Structured Adherence Override ──
+            is_gliner_compliant, gl_signal, _ = check_gliner_compliance_override(clause_text, rule, nlp=nlp)
+            if is_gliner_compliant:
+                status = "COMPLIANT"
+                catch_signal = gl_signal
+                element_results = []
+                coverage_fraction = 1.0
+                any_contradiction = False
+            else:
+                # ── Check 2: Element-level checklist matching ──────────────────
+                req_elems = rule.required_elements if rule.required_elements else [{"id": "element_1", "text": rule.requirement_text}]
+                elem_res = check_elements(clause_text, req_elems, nlp=nlp, comparison_type=rule.comparison_type)
+                element_results = elem_res["elements"]
+                coverage_fraction = elem_res["coverage_fraction"]
+                any_contradiction = elem_res["any_contradiction"]
 
             qty_conflict = any(el["method"] == "quantity" and el["contradicted"] for el in element_results)
 
@@ -421,6 +425,9 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
                 if _is_deferral_clause(clause_text) and not qty_conflict:
                     status = "GAP"
                     catch_signal = "NLI contradiction on deferral clause treated as GAP"
+                elif not verify_real_contradiction(clause_text, is_qty_conflict=qty_conflict, is_high_risk=False):
+                    status = "GAP"
+                    catch_signal = "NLI contradiction on silent/orthogonal topic treated as GAP (no explicit negation/exclusion)"
                 else:
                     status = "CONFLICT"
                     catch_signal = "element-level contradiction"
