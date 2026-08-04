@@ -68,6 +68,7 @@ class TriggerScanView(APIView):
 class ScanReportListView(ListAPIView):
     """GET /api/compliance/reports/ — List scan reports for current user."""
     serializer_class = ScanReportListSerializer
+    pagination_class = None
 
     def get_queryset(self):
         return ScanReport.objects.filter(
@@ -103,6 +104,9 @@ class WhatIfCheckView(APIView):
                 match_clause_against_laws,
             )
             from ml_engine.rule_checker import _safe_regex_search
+            from ml_engine.quantity_checker import check_quantity_conflict
+            from compliance.engine import _is_deferral_clause, _check_high_risk_conflict, _get_nlp, MINILM_FLOOR, STRONG_MATCH
+            from ml_engine.contradiction_checker import check_entailment
             from laws.models import LegalRule
 
             rules = LegalRule.objects.filter(is_active=True)
@@ -115,28 +119,100 @@ class WhatIfCheckView(APIView):
             matches = match_clause_against_laws(clause_text, law_cache)
 
             results = []
-            for m in matches[:10]:  # top 10
+            for m in matches:
+                if len(results) >= 8:
+                    break
                 rule = rule_lookup.get(m['legal_rule_id'])
                 if not rule:
                     continue
 
-                # Check keyword presence
-                kw_match = _safe_regex_search(
-                    rule.keywords_regex, clause_text
-                )
+                miniml_sim = m['miniml_similarity']
+                combined_sim = m['combined_score']
+
+                if miniml_sim < MINILM_FLOOR and combined_sim < 0.50:
+                    continue
+
+                # Domain boundary protection
+                clause_low = clause_text.lower()
+                rule_law = rule.law_name.lower()
+                rule_req = rule.requirement_text.lower()
+                if "posh" in rule_law or "sexual harassment" in rule_req:
+                    if not any(w in clause_low for w in ["posh", "harassment", "sexual", "woman", "women", "icc", "internal committee", "gender", "aggrieved", "respondent"]):
+                        continue
+                elif "maternity" in rule_law or "creche" in rule_req:
+                    if not any(w in clause_low for w in ["maternity", "pregnancy", "creche", "nursing", "mother", "maternal", "child", "woman", "women"]):
+                        continue
+                elif "dpdp" in rule_law or "data protection" in rule_law:
+                    if not any(w in clause_low for w in ["data", "privacy", "personal", "confidentiality", "processing", "aadhaar", "biometric", "security", "cyber", "record", "retention", "gdpr", "dpdp", "consent", "vendor", "sharing", "third party"]):
+                        continue
+                elif "it act" in rule_law or "information technology" in rule_law:
+                    if not any(w in clause_low for w in ["it act", "information technology", "cyber", "computer", "network", "electronic", "digital", "internet", "software", "hardware", "website", "intermediary", "portal"]):
+                        continue
+                elif "contract act" in rule_law or "non-compete" in rule_req or "restraint" in rule_req:
+                    if not any(w in clause_low for w in ["compete", "competitor", "restraint", "prohibit", "restriction", "post-termination", "working after", "joining", "resigns", "resignation", "notice"]):
+                        continue
+                elif "trade union" in rule_req or "collective action" in rule_req or "section 4" in rule.section.lower():
+                    if not any(w in clause_low for w in ["union", "collective", "association", "organization", "group activity", "strike"]):
+                        continue
+
+                kw_match = _safe_regex_search(rule.keywords_regex, clause_text)
+                keyword_found = kw_match is not None
+
+                status_code = "COMPLIANT"
+                status_label = "Compliant / Lawful"
+                explanation = "Clause aligns with statutory standards or does not violate this mandate."
+
+                # 1. Quantity conflict check
+                if rule.required_value is not None:
+                    nlp = _get_nlp()
+                    if nlp:
+                        qty = check_quantity_conflict(clause_text, rule.required_value, rule.required_unit, rule.comparison_type, nlp)
+                        if qty.get("has_quantity") and qty.get("is_conflict"):
+                            status_code = "CONFLICT"
+                            status_label = "Likely Violation"
+                            explanation = f"Numerical limit or allowance contradicts statutory mandate: {rule.requirement_text}"
+
+                # 2. High-risk antipattern check
+                if status_code == "COMPLIANT":
+                    hr_status, hr_signal = _check_high_risk_conflict(clause_text, rule)
+                    if hr_status is not None:
+                        status_code = hr_status
+                        status_label = "Likely Violation" if hr_status == "CONFLICT" else "Possible Issue / Gap"
+                        explanation = hr_signal
+
+                # 3. Deferral check vs NLI / keywords
+                if status_code == "COMPLIANT":
+                    if _is_deferral_clause(clause_text):
+                        status_code = "COMPLIANT"
+                        status_label = "Compliant / Defers to Law"
+                        explanation = "Clause explicitly defers to or confirms adherence to applicable statutory law."
+                    else:
+                        if keyword_found or combined_sim >= STRONG_MATCH:
+                            nli_result = check_entailment(clause_text, rule.requirement_text)
+                            if nli_result and nli_result.get("label") == "contradiction" and combined_sim >= STRONG_MATCH:
+                                status_code = "CONFLICT"
+                                status_label = "Likely Violation"
+                                explanation = "Semantic contradiction detected against statutory requirements."
+                            elif keyword_found and not _is_deferral_clause(clause_text):
+                                status_code = "GAP"
+                                status_label = "Possible Issue / Needs Review"
+                                explanation = "Statutory terms detected; verify complete procedural safeguards are met."
 
                 results.append({
                     "law_name": rule.law_name,
                     "section": rule.section,
                     "category": rule.category,
                     "severity_weight": rule.severity_weight,
-                    "requirement_text": rule.requirement_text[:200],
-                    "template_fix": rule.template_fix[:200],
+                    "requirement_text": rule.requirement_text,
+                    "template_fix": rule.template_fix,
                     "miniml_similarity": m['miniml_similarity'],
                     "inlegal_similarity": m['inlegal_similarity'],
                     "combined_score": m['combined_score'],
-                    "is_potential_conflict": m['is_potential_conflict'],
-                    "keyword_found": kw_match is not None,
+                    "is_potential_conflict": status_code in ("CONFLICT", "GAP"),
+                    "status": status_code,
+                    "status_label": status_label,
+                    "explanation": explanation,
+                    "keyword_found": keyword_found,
                 })
 
         except Exception as exc:

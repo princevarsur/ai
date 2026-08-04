@@ -35,7 +35,7 @@ class ScanReportListSerializer(serializers.ModelSerializer):
         model = ScanReport
         fields = (
             'id', 'policy_title', 'overall_score', 'risk_level',
-            'flagged_clauses', 'scanned_at',
+            'total_clauses', 'compliant_clauses', 'flagged_clauses', 'scanned_at',
         )
 
 

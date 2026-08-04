@@ -7,7 +7,8 @@ class LegalRuleListSerializer(serializers.ModelSerializer):
         model = LegalRule
         fields = (
             'id', 'law_name', 'section', 'category',
-            'severity_weight', 'is_active',
+            'severity_weight', 'is_active', 'requirement_text',
+            'keywords_regex', 'template_fix',
         )
 
 

@@ -7,6 +7,7 @@ from .serializers import LegalRuleListSerializer, LegalRuleDetailSerializer
 class LegalRuleListView(ListAPIView):
     """GET /api/laws/ — List all active rules. ?category=labour to filter."""
     serializer_class = LegalRuleListSerializer
+    pagination_class = None
 
     def get_queryset(self):
         qs = LegalRule.objects.filter(is_active=True)
@@ -25,6 +26,7 @@ class LegalRuleDetailView(RetrieveAPIView):
 class LegalRuleByCategoryView(ListAPIView):
     """GET /api/laws/category/<category>/ — Filter rules by category."""
     serializer_class = LegalRuleListSerializer
+    pagination_class = None
 
     def get_queryset(self):
         return LegalRule.objects.filter(
