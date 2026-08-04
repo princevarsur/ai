@@ -33,9 +33,9 @@ except ImportError:
 
 CLAUSE_PATTERNS = [
     # 1. Numbered sections: "1.", "1.1", "1.2.3"
-    (r"^\s*(\d+(?:\.\d+)*)\.\s+", "numbered"),
-    # 1b. Numbered without trailing dot: "1.1 Every", "2.1 Employee"
-    (r"^\s*(\d+\.\d+(?:\.\d+)*)\s+", "numbered_sub"),
+    (r"^\s*(\d+(?:\.\d+)*)\.(?:\s+|$)", "numbered"),
+    # 1b. Numbered without trailing dot: "1.1 Every", "2.1 Employee", or standalone "12.4"
+    (r"^\s*(\d+\.\d+(?:\.\d+)*)(?:\s+|$)", "numbered_sub"),
     # 2. Lettered/roman sub-sections: "(a)", "(ii)", "(iv)"
     (r"^\s*\(([a-z]|[ivxlc]+)\)\s+", "lettered"),
     # 3. Section headers: "Section 4", "Clause 12", "Article 5"
@@ -167,12 +167,12 @@ def get_clause_stats(clauses: list[dict]) -> dict:
 def _detect_section_id(line: str) -> str:
     """Try to extract a section identifier from a line."""
     # Numbered with trailing dot: "1.", "1.2.", "1.2.3."
-    match = re.match(r"^\s*(\d+(?:\.\d+)*)\.\s+", line)
+    match = re.match(r"^\s*(\d+(?:\.\d+)*)\.(?:\s+|$)", line)
     if match:
         return match.group(1)
 
     # Numbered without trailing dot: "1.1 Every", "2.1 Employee"
-    match = re.match(r"^\s*(\d+\.\d+(?:\.\d+)*)\s+", line)
+    match = re.match(r"^\s*(\d+\.\d+(?:\.\d+)*)(?:\s+|$)", line)
     if match:
         return match.group(1)
 

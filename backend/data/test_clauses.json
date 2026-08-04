@@ -415,5 +415,115 @@
     "source": "MNC Global Code of Conduct (Indian annex)",
     "category": "different_wording",
     "notes": "'Ethics panel' not 'ICC', 'female VP' satisfies Presiding Officer req, 'external NGO member' satisfies Section 4(1)(c). Tests whether engine recognises structural compliance through paraphrase."
+  },
+  {
+    "id": 44,
+    "clause_text": "Working Hours: Employees shall work 8 hours per day and 5 days a week. Any overtime shall be compensated according to applicable state laws and company policy.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Standard 8h/day 5-day week with overtime compensation per state laws. Properly compliant."
+  },
+  {
+    "id": 45,
+    "clause_text": "Equal Employment Opportunity: The company provides equal employment opportunities without discrimination based on gender, religion, caste, disability, age, or any other protected characteristic under applicable Indian laws.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Covers protected characteristics under Indian laws without discrimination. Properly compliant."
+  },
+  {
+    "id": 46,
+    "clause_text": "Leave Policy: Employees are entitled to paid leave, sick leave, and public holidays as prescribed by applicable labour laws and company policy.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Provides paid leave, sick leave, public holidays per applicable labour laws. Properly compliant."
+  },
+  {
+    "id": 47,
+    "clause_text": "Workplace Safety: The company is committed to providing a safe and healthy workplace and will comply with all applicable occupational safety requirements.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Committed to safe/healthy workplace and compliance with occupational safety requirements. Properly compliant."
+  },
+  {
+    "id": 48,
+    "clause_text": "Prevention of Sexual Harassment: The company follows the Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013, and maintains an Internal Committee to address complaints.",
+    "should_match_law": "POSH Act, 2013",
+    "should_match_section": "Section 4",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Explicitly references POSH Act 2013 and Internal Committee maintenance. Properly compliant."
+  },
+  {
+    "id": 49,
+    "clause_text": "Data Privacy and Confidentiality: Employees must protect company and customer confidential information and comply with applicable data protection and information security requirements.",
+    "should_match_law": "DPDP Act, 2023",
+    "should_match_section": "Section 8",
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Requires compliance with applicable data protection and information security requirements. Properly compliant."
+  },
+  {
+    "id": 50,
+    "clause_text": "Performance Management: Employee performance shall be evaluated fairly using objective business criteria. Performance reviews shall not be discriminatory or retaliatory.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Fair objective evaluations without discrimination or retaliation. Properly compliant."
+  },
+  {
+    "id": 51,
+    "clause_text": "Remote Work Policy: Employees may work remotely with manager approval while complying with company security, attendance, and productivity requirements.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "COMPLIANT",
+    "ground_truth_label": false,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "standard_compliance",
+    "notes": "Manager approval with security, attendance, and productivity adherence. Properly compliant."
+  },
+  {
+    "id": 52,
+    "clause_text": "Attendance Policy: Employees who arrive more than 10 minutes late on three occasions in a month may lose one day's attendance incentive. The policy must be applied fairly, proportionately, and in compliance with applicable labour laws.",
+    "should_match_law": null,
+    "should_match_section": null,
+    "expected_status": "GAP",
+    "ground_truth_label": true,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "partial_compliance_gap",
+    "notes": "Genuine 50/50 partial case: attendance incentive deduction for late arrival; requires fair application under labour laws but risks proportional wage disputes."
+  },
+  {
+    "id": 53,
+    "clause_text": "Salary Deduction for Resignation Without Notice: If an employee resigns without serving the notice period, the company will permanently withhold all earned salary and accrued wages.",
+    "should_match_law": "Labour Codes, 2020 Code on Industrial Relations",
+    "should_match_section": null,
+    "expected_status": "CONFLICT",
+    "ground_truth_label": true,
+    "source": "Indian IT Company Employee Policy (Sample)",
+    "category": "unlawful_withholding",
+    "notes": "Clear violation: permanently withholding all earned salary and accrued wages for resigning without notice is generally unlawful in India."
   }
 ]
