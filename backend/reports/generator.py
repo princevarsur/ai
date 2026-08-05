@@ -201,7 +201,9 @@ def generate_compliance_pdf(report_id: int) -> bytes:
     story.append(Spacer(1, 24))
 
     policy_title = report.policy.title if report.policy else "Employment Policy Document"
-    company_name = getattr(report.scanned_by, "company_name", None) or "Client Organization"
+    company_name = getattr(report.scanned_by, "company_name", None)
+    if not company_name or len(str(company_name).strip()) < 2:
+        company_name = "Client Organization"
     scan_date_str = report.scanned_at.strftime("%B %d, %Y (%H:%M UTC)") if report.scanned_at else timezone.now().strftime("%B %d, %Y")
 
     story.append(Paragraph("Statutory Compliance Assessment", title_style))
@@ -259,7 +261,7 @@ def generate_compliance_pdf(report_id: int) -> bytes:
     story.append(Spacer(1, 28))
     summary_notice = (
         "<b>Executive Audit Scope:</b> This document represents an automated statutory compliance audit comparing the submitted corporate "
-        "policy against 44 central Indian labour codes, data privacy regulations (DPDP Act 2023), and workplace harassment laws (POSH Act 2013). "
+        "policy against the 4 Central Labour Codes (consolidating 29 historic enactments), data privacy regulations (DPDP Act 2023), and workplace harassment laws (POSH Act 2013). "
         "Flagged discrepancies represent potential statutory non-compliance requiring prioritization and remediation."
     )
     notice_box = Table([[Paragraph(summary_notice, body_style)]], colWidths=[504])

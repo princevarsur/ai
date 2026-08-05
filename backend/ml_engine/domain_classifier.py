@@ -96,8 +96,8 @@ def check_clause_topical_alignment(clause_text: str, rule) -> bool:
         if not any(w in c_low for w in retention_terms):
             return False
 
-    # 5. DPDP Section 10 (Personal Data Breach Notification)
-    if ("dpdp" in r_law or "data protection" in r_law) and ("section 10" in r_sec or "breach" in r_req):
+    # 5. DPDP Section 8(6) (Personal Data Breach Notification)
+    if ("dpdp" in r_law or "data protection" in r_law) and ("8(6)" in r_sec or "section 10" in r_sec or "breach" in r_req):
         breach_terms = ["breach", "leak", "unauthorized access", "incident", "compromise", "notification", "report", "cert-in", "data protection board", "dpb"]
         if not any(w in c_low for w in breach_terms):
             return False
@@ -123,7 +123,37 @@ def check_clause_topical_alignment(clause_text: str, rule) -> bool:
         if not any(w in c_low for w in ["compete", "competitor", "restraint", "prohibit", "restriction", "post-termination", "working after", "joining"]):
             return False
 
+    # 10. IT Act 2000 / Section 79 (Online Intermediaries Safe Harbour)
+    # Strictly applicable to online platforms hosting 3rd-party user content; never apply to standard internal employee HR handbooks
+    if "it act" in r_law and "79" in r_sec:
+        intermediary_terms = ["intermediary", "third-party content", "platform users", "content takedown", "safe harbour", "user generated content"]
+        if not any(w in c_low for w in intermediary_terms):
+            return False
+
+    # 11. Industrial Relations Code / Grievance Redressal Committee (GRC) vs POSH ICC Firewall
+    if "industrial relations" in r_law and ("grievance redressal committee" in r_sec or "grc" in r_sec or "section 4" in r_sec):
+        # Prevent POSH sexual harassment ICC clauses from being re-used as evidence for general labor GRC
+        posh_only_terms = ["sexual harassment", "internal complaints committee", "posh", "aggrieved woman", "workplace harassment"]
+        if any(w in c_low for w in posh_only_terms) and not any(w in c_low for w in ["trade union", "industrial dispute", "general grievance", "pay dispute", "worker nominee", "working conditions"]):
+            return False
+
     return True
+
+
+# ── Mandatory vs. Permissive / Void-If-Present Lookup ────────────────────────
+
+def is_permissive_or_void_if_present_rule(rule) -> bool:
+    """
+    Distinguishes mandatory inclusion statutes from statutes that are void-if-present
+    or permissive (e.g., Contract Act s.27 non-competes). Absence of a permissive/void
+    topic is legally compliant and must not be flagged as a GAP or MISSING.
+    """
+    law = getattr(rule, "law_name", "").lower()
+    sec = getattr(rule, "section", "").lower()
+    if "contract act" in law and "27" in sec:
+        return True
+    return False
+
 
 
 # ── Contradiction vs Silence Firewall ────────────────────────────────────────
