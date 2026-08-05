@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Table, Modal, Collapse, Tag, Progress, Badge, Skeleton, message } from 'antd';
+import { Table, Modal, Tag, Progress, Badge, Skeleton, message } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { complianceAPI, reportsAPI } from '../services/api';
 import ThemisMark from '../components/ThemisMark';
@@ -187,12 +187,15 @@ export default function ReportPage() {
       title: 'SEVERITY',
       dataIndex: 'severity_score',
       key: 'severity_icon',
-      width: 100,
+      width: 90,
+      align: 'center',
       render: (val, record) => {
-        if (record.is_resolved) return <span style={{ color: 'var(--success)', fontWeight: 600 }}>🟢 Resolved</span>;
-        if (val >= 70) return <span style={{ color: 'var(--danger)', fontWeight: 600 }}>🔴 High</span>;
-        if (val >= 40) return <span style={{ color: 'var(--warning)', fontWeight: 600 }}>🟡 Medium</span>;
-        return <span style={{ color: 'var(--success)', fontWeight: 600 }}>🟢 Low</span>;
+        let color = '#10B981'; // green
+        if (!record.is_resolved) {
+          if (val >= 70) color = '#DC2626'; // red
+          else if (val >= 40) color = '#F59E0B'; // orange
+        }
+        return <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: color, margin: '0 auto' }} />;
       }
     },
     {
@@ -201,22 +204,41 @@ export default function ReportPage() {
       key: 'clause_text',
       render: (text, record) => {
         const isExpanded = !!expandedRowKeys[record.id];
-        const isLong = text && text.length > 100;
-        const display = isExpanded || !isLong ? text : `${text.slice(0, 100)}...`;
+        const isLong = text && text.length > 110;
 
         return (
           <div>
-            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>
-              {display || '—'}
+            <div style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: 13,
+              color: 'var(--ink)',
+              lineHeight: 1.6,
+              maxHeight: isLong && !isExpanded ? '4.8em' : '50em',
+              overflow: 'hidden',
+              position: 'relative',
+              transition: 'max-height 280ms cubic-bezier(0.23, 1, 0.32, 1)',
+            }}>
+              {text || '—'}
+              {isLong && !isExpanded && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: '1.8em',
+                  background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, var(--bg, #fff) 95%)',
+                  pointerEvents: 'none'
+                }} />
+              )}
             </div>
             {isLong && (
               <button
                 type="button"
                 className="btn btn-ghost"
-                style={{ padding: 0, fontSize: 11, height: 'auto', marginTop: 4, textDecoration: 'underline' }}
+                style={{ padding: 0, fontSize: 11, height: 'auto', marginTop: 6, textDecoration: 'underline', fontWeight: 500 }}
                 onClick={() => setExpandedRowKeys(prev => ({ ...prev, [record.id]: !prev[record.id] }))}
               >
-                {isExpanded ? 'Show less' : 'Expand clause'}
+                {isExpanded ? 'Show less ▲' : 'Expand clause ▼'}
               </button>
             )}
           </div>
@@ -315,7 +337,6 @@ export default function ReportPage() {
 
   const issues = report?.flagged_issues || [];
   const activeIssues = issues.filter(i => !i.is_resolved && i.status !== 'compliant');
-  const resolvedOrCompliant = issues.filter(i => i.is_resolved || i.status === 'compliant');
 
   return (
     <div style={{ maxWidth: 1040, margin: '0 auto', paddingBottom: 48 }}>
@@ -426,44 +447,6 @@ export default function ReportPage() {
           pagination={{ pageSize: 10, position: ['bottomRight'] }}
           locale={{ emptyText: 'No unresolved legal conflicts detected in this document.' }}
           style={{ background: 'var(--bg)', borderTop: '1px solid var(--hairline)' }}
-        />
-      </div>
-
-      {/* ── 4. COMPLIANT CLAUSES (COLLAPSIBLE) ─────────────────────── */}
-      <div style={{ marginBottom: 32 }}>
-        <Collapse
-          style={{ background: 'var(--bg)', border: '1px solid var(--hairline)', borderRadius: 4 }}
-          items={[{
-            key: '1',
-            label: (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
-                <span style={{ color: 'var(--success)' }}>✅</span>
-                <span style={{ fontWeight: 600, color: 'var(--ink)' }}>Compliant & Resolved Clauses</span>
-                <span className="mono" style={{ color: 'var(--muted)', fontSize: 12 }}>
-                  ({report?.compliant_clauses || resolvedOrCompliant.length} clauses passed)
-                </span>
-              </div>
-            ),
-            children: (
-              <div style={{ padding: '8px 16px' }}>
-                {resolvedOrCompliant.length === 0 ? (
-                  <p className="mono" style={{ color: 'var(--muted)', fontSize: 12, margin: 0 }}>
-                    {report?.compliant_clauses ? `${report.compliant_clauses} unflagged clauses successfully evaluated and verified clean.` : 'No compliant entries listed in diagnostic trace.'}
-                  </p>
-                ) : (
-                  <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {resolvedOrCompliant.map((item, i) => (
-                      <li key={item.id || i}>
-                        <span style={{ fontWeight: 500 }}>Clause #{item.clause_index + 1}: </span>
-                        <span style={{ color: 'var(--muted)' }}>{item.clause_text || '—'}</span>
-                        {item.is_resolved && <Tag color="success" style={{ marginLeft: 8 }}>Manually Resolved</Tag>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )
-          }]}
         />
       </div>
 
