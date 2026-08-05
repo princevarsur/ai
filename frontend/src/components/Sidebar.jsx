@@ -174,7 +174,7 @@ export default function Sidebar() {
             fontFamily: "'IBM Plex Sans', sans-serif",
             cursor: 'pointer',
             letterSpacing: '0.02em',
-            transition: 'all 150ms ease-out',
+            transition: 'background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out, transform 150ms cubic-bezier(0.23, 1, 0.32, 1)',
           }}
           onMouseEnter={e => {
             e.currentTarget.style.background = C.signOutHoverBg;

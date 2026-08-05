@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, Statistic, Table, Button, Skeleton, Tag, Empty } from 'antd';
-import { CloudUploadOutlined, ExperimentOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined, ExperimentOutlined, DatabaseOutlined, FileProtectOutlined, ExclamationCircleOutlined, CheckCircleOutlined, AlertOutlined } from '@ant-design/icons';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
   ReferenceArea, PieChart, Pie, Cell, Legend
@@ -215,6 +215,7 @@ export default function DashboardPage() {
         {/* Card 1: Total Policies */}
         <Card
           bordered={false}
+          className="kpi-card-animate kpi-card-1"
           style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 4 }}
           styles={{ body: { padding: '18px 22px' } }}
         >
@@ -222,13 +223,14 @@ export default function DashboardPage() {
             title={<span className="label-sm">TOTAL POLICIES SCANNED</span>}
             value={stats?.total_policies_scanned || 0}
             valueStyle={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 600, color: 'var(--ink)' }}
-            prefix={<span style={{ marginRight: 8, fontSize: 24 }}>📁</span>}
+            prefix={<FileProtectOutlined style={{ marginRight: 10, fontSize: 24, color: 'var(--accent)' }} />}
           />
         </Card>
 
         {/* Card 2: Average Score */}
         <Card
           bordered={false}
+          className="kpi-card-animate kpi-card-2"
           style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 4 }}
           styles={{ body: { padding: '18px 22px' } }}
         >
@@ -248,6 +250,7 @@ export default function DashboardPage() {
         {/* Card 3: Total Flagged Issues Breakdown */}
         <Card
           bordered={false}
+          className="kpi-card-animate kpi-card-3"
           style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 4 }}
           styles={{ body: { padding: '18px 22px' } }}
         >
@@ -255,15 +258,20 @@ export default function DashboardPage() {
           <div className="mono" style={{ fontSize: 32, fontWeight: 600, color: 'var(--ink)' }}>
             {stats?.total_flagged_issues || 0}
           </div>
-          <div className="mono" style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, display: 'flex', gap: 12 }}>
-            <span style={{ color: 'var(--danger)' }}>⚠️ {stats?.unresolved_issues || 0} Unresolved</span>
-            <span style={{ color: 'var(--success)' }}>✓ {stats?.resolved_issues || 0} Resolved</span>
+          <div className="mono" style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, display: 'flex', gap: 12, alignItems: 'center' }}>
+            <span style={{ color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <ExclamationCircleOutlined /> {stats?.unresolved_issues || 0} Unresolved
+            </span>
+            <span style={{ color: 'var(--success)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircleOutlined /> {stats?.resolved_issues || 0} Resolved
+            </span>
           </div>
         </Card>
 
         {/* Card 4: Critical Issues */}
         <Card
           bordered={false}
+          className="kpi-card-animate kpi-card-4"
           style={{ background: '#FDF3F3', border: '1px solid #F0C4C4', borderRadius: 4 }}
           styles={{ body: { padding: '18px 22px' } }}
         >
@@ -271,7 +279,7 @@ export default function DashboardPage() {
             title={<span className="label-sm" style={{ color: '#801C1C' }}>CRITICAL / HIGH RISKS</span>}
             value={criticalCount}
             valueStyle={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: '#801C1C' }}
-            prefix={<span style={{ marginRight: 8, fontSize: 24 }}>🚨</span>}
+            prefix={<AlertOutlined style={{ marginRight: 10, fontSize: 24, color: '#DC2626' }} />}
           />
           <div style={{ fontSize: 11, color: '#A33F3F', marginTop: 4 }}>Requires prompt remediation</div>
         </Card>

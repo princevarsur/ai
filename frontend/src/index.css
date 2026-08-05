@@ -392,3 +392,36 @@ hr { border: none; border-top: 1px solid var(--hairline); }
 .interactive-btn:active {
   transform: scale(0.97) !important;
 }
+
+/* ── Staggered KPI Card Entrance (Emil Kowalski Design Engineering) ──── */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.kpi-card-animate {
+  opacity: 0;
+  animation: slideUpFade 350ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+.kpi-card-1 { animation-delay: 0ms; }
+.kpi-card-2 { animation-delay: 45ms; }
+.kpi-card-3 { animation-delay: 90ms; }
+.kpi-card-4 { animation-delay: 135ms; }
+
+/* ── Smooth async table row entrance ─────────────────────────────────── */
+.ant-table-tbody > tr {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease-out, transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.ant-table-tbody > tr {
+  @starting-style {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
