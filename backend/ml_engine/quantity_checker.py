@@ -33,16 +33,17 @@ _UNIT_MAP: dict[str, str] = {
     "crore": "inr",
     # Generic
     "employee": "employees", "employees": "employees",
+    "member": "members", "members": "members",
 }
 
 _UNIT_PATTERN = re.compile(
-    r"\b(weeks?|days?|months?|years?|%|percent(?:age)?|inr|rupees?|rs\.?|lakh|crore|employees?)\b",
+    r"\b(weeks?|days?|months?|years?|%|percent(?:age)?|inr|rupees?|rs\.?|lakh|crore|employees?|members?)\b",
     re.IGNORECASE,
 )
 
 _NUMERIC_PATTERN = re.compile(
     r"(\d+(?:\.\d+)?)\s*"
-    r"(weeks?|days?|months?|years?|%|percent(?:age)?|inr|rupees?|rs\.?|lakh|crore|employees?)",
+    r"(weeks?|days?|months?|years?|%|percent(?:age)?|inr|rupees?|rs\.?|lakh|crore|employees?|members?)",
     re.IGNORECASE,
 )
 
@@ -64,7 +65,7 @@ _WORD_NUM_PATTERN = re.compile(
     r"fourteen|thirteen|twelve|eleven|ten|nine|eight|seven|six|five|"
     r"four|three|two|one|thirty|sixty|ninety|zero)\b"
     r"\s*(?:\(\d+\)\s*)?"  # optional parenthetical "(26)"
-    r"(weeks?|days?|months?|years?|%|percent(?:age)?|inr|rupees?|employees?)",
+    r"(weeks?|days?|months?|years?|%|percent(?:age)?|inr|rupees?|employees?|members?)",
     re.IGNORECASE,
 )
 
@@ -185,7 +186,7 @@ def _extract_via_regex(text: str) -> dict | None:
 # ─── Public API ───────────────────────────────────────────────────────────
 
 
-def extract_quantity(text: str, nlp) -> dict | None:
+def extract_quantity(text: str, nlp=None) -> dict | None:
     """
     Extract a number + unit from clause text using NER first, regex fallback.
 
@@ -193,9 +194,10 @@ def extract_quantity(text: str, nlp) -> dict | None:
         {"value": float, "unit": str, "extraction_method": "ner"|"regex"}
         or None if nothing found.
     """
-    result = _extract_via_ner(text, nlp)
-    if result is not None:
-        return result
+    if nlp is not None:
+        result = _extract_via_ner(text, nlp)
+        if result is not None:
+            return result
     return _extract_via_regex(text)
 
 
