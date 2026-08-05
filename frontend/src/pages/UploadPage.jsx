@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, message } from 'antd';
 import { policiesAPI, complianceAPI } from '../services/api';
 import ThemisMark from '../components/ThemisMark';
+import ChalkBookLoader from '../components/ChalkBookLoader';
 
 const { Dragger } = Upload;
 
@@ -134,11 +135,11 @@ export default function UploadPage() {
 
       {error && <div className="alert alert-error" style={{ marginBottom: 24 }}>{error}</div>}
 
-      {/* ── STATE: Scanning (AI Execution Animation) ────────────── */}
+      {/* ── STATE: Scanning (Transparent Charcoal Book Animation) ── */}
       {step === 'scanning' ? (
         <div className="panel" style={{ padding: '64px 32px', textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-            <ThemisMark size={56} color="var(--accent)" thinking={true} />
+            <ChalkBookLoader size={68} />
           </div>
           <h2 style={{ fontFamily: "'Newsreader', serif", fontSize: 24, marginBottom: 8, color: 'var(--ink)' }}>
             Analyzing Legal Clauses
@@ -167,26 +168,31 @@ export default function UploadPage() {
               beforeUpload={handleBeforeUpload}
               onRemove={handleRemove}
               disabled={step === 'uploading'}
+              className="themis-dropzone"
               style={{
-                background: 'var(--bg)',
-                border: '1px dashed var(--hairline-2)',
-                borderRadius: 4,
-                padding: '32px 20px',
-                transition: 'border-color var(--t), background var(--t)',
+                background: file ? 'var(--surface-hover, #1E2228)' : 'var(--bg)',
+                border: file ? '1.5px solid var(--success)' : '1px dashed var(--hairline-2)',
+                borderRadius: 'var(--r-sm, 6px)',
+                padding: '36px 24px',
+                transition: 'border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                cursor: 'pointer',
+                boxShadow: file ? '0 0 16px rgba(74, 120, 86, 0.12)' : 'none',
               }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                <div style={{ transform: 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                  <ThemisMark
+                    size={44}
+                    color={file ? 'var(--success)' : 'var(--accent)'}
+                    thinking={step === 'uploading' || step === 'scanning'}
+                  />
+                </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
-                    Click or drag file to this area to select
+                  <div style={{ fontSize: 14, fontWeight: 600, color: file ? 'var(--success)' : 'var(--ink)', transition: 'color 0.2s ease-out' }}>
+                    {file ? `Selected: ${file.name}` : 'Click or drag policy file here to weigh compliance'}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                    Supports corporate policy manuals and handbook text formats
+                    {file ? 'Ready for deep statutory extraction and multi-signal scoring' : 'Supports corporate policy manuals and handbook text formats'}
                   </div>
                 </div>
               </div>

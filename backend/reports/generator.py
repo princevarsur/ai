@@ -1,4 +1,5 @@
 import io
+import re
 import datetime
 from django.utils import timezone
 from reportlab.lib import colors
@@ -185,50 +186,96 @@ def generate_compliance_pdf(report_id: int) -> bytes:
     story = []
 
     # ──────────────────────────────────────────────────────────────────────────
-    # PAGE 1: COVER PAGE
+    # PAGE 1: COVER PAGE (EXECUTIVE DASHBOARD UI)
     # ──────────────────────────────────────────────────────────────────────────
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("T H E M I S", logo_style))
-    story.append(Paragraph("<font size='9' color='#64748B'>ADVANCED STATUTORY COMPLIANCE & RISK ENGINE</font>", styles["Normal"]))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#1F2227"), spaceAfter=40, spaceBefore=8))
+    # Dark Header Banner
+    header_left = Paragraph("<b><font color='#FFFFFF' size='16' face='Helvetica-Bold'>THEMIS</font></b><br/><font color='#94A3B8' size='8'>ADVANCED STATUTORY COMPLIANCE & RISK ENGINE</font>", styles["Normal"])
+    header_right = Paragraph("<p align='right'><b><font color='#FFFFFF' size='11'>EXECUTIVE AUDIT</font></b><br/><font color='#94A3B8' size='8'>STRICTLY CONFIDENTIAL</font></p>", styles["Normal"])
+    banner_table = Table([[header_left, header_right]], colWidths=[300, 204])
+    banner_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#0F172A")),
+        ('PADDING', (0, 0), (-1, -1), 14),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(banner_table)
+    story.append(Spacer(1, 24))
 
     policy_title = report.policy.title if report.policy else "Employment Policy Document"
     company_name = getattr(report.scanned_by, "company_name", None) or "Client Organization"
     scan_date_str = report.scanned_at.strftime("%B %d, %Y (%H:%M UTC)") if report.scanned_at else timezone.now().strftime("%B %d, %Y")
 
-    story.append(Paragraph("Compliance Assessment Report", title_style))
-    story.append(Paragraph(f"<b>Policy Document:</b> {policy_title}<br/><b>Prepared For:</b> {company_name}<br/><b>Evaluation Date:</b> {scan_date_str}", subtitle_style))
-    story.append(Spacer(1, 10))
+    story.append(Paragraph("Statutory Compliance Assessment", title_style))
+    story.append(Spacer(1, 4))
 
-    # Overall Score Circle
+    # Two-Column Document Metadata Register
+    meta_left = Paragraph(f"<b>Document Under Audit:</b><br/><font color='#1E293B' size='11'><b>{policy_title}</b></font><br/><br/><b>Target Statutory Framework:</b><br/><font color='#475569'>Indian Central Labour Codes & State Rules</font>", body_style)
+    meta_right = Paragraph(f"<b>Prepared For:</b><br/><font color='#1E293B' size='11'><b>{company_name}</b></font><br/><br/><b>Evaluation Date:</b><br/><font color='#475569'>{scan_date_str}</font>", body_style)
+    meta_card = Table([[meta_left, meta_right]], colWidths=[252, 252])
+    meta_card.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#E2E8F0")),
+        ('PADDING', (0, 0), (-1, -1), 14),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    story.append(meta_card)
+    story.append(Spacer(1, 24))
+
+    # Interactive-Feeling Executive KPI Dashboard Box
+    story.append(Paragraph("Executive Risk Posture Dashboard", h2_style))
     score_val = int(round(report.overall_score))
     score_color = get_score_color(score_val)
+    score_hex = "#A33F3F" if score_val < 40 else ("#A67C3D" if score_val < 70 else "#10B981")
 
-    d = Drawing(504, 150)
-    d.add(Circle(75, 75, 65, fillColor=score_color, strokeColor=None))
-    d.add(String(75, 63, f"{score_val}%", textAnchor="middle", fontSize=34, fontName="Helvetica-Bold", fillColor=colors.white))
-    
-    # Text to the right of circle in drawing
-    risk_text = f"RISK POSTURE: {report.risk_level.upper()}"
-    d.add(String(170, 95, risk_text, fontSize=18, fontName="Helvetica-Bold", fillColor=score_color))
-    d.add(String(170, 72, f"Total Clauses Evaluated: {report.total_clauses}", fontSize=12, fontName="Helvetica", fillColor=colors.HexColor("#334155")))
-    d.add(String(170, 52, f"Statutory Conflicts Flagged: {report.flagged_clauses}", fontSize=12, fontName="Helvetica", fillColor=colors.HexColor("#334155")))
-    story.append(d)
+    d = Drawing(136, 136)
+    d.add(Circle(68, 68, 62, fillColor=colors.HexColor("#F1F5F9"), strokeColor=score_color, strokeWidth=2))
+    d.add(Circle(68, 68, 56, fillColor=score_color, strokeColor=None))
+    d.add(String(68, 58, f"{score_val}%", textAnchor="middle", fontSize=30, fontName="Helvetica-Bold", fillColor=colors.white))
 
-    story.append(Spacer(1, 40))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceAfter=16))
+    kpi_1 = Paragraph(f"<font color='#64748B' size='8'><b>RISK POSTURE</b></font><br/><font color='{score_hex}' size='14'><b>{report.risk_level.upper()} RISK</b></font>", styles["Normal"])
+    kpi_2 = Paragraph(f"<font color='#64748B' size='8'><b>TOTAL CLAUSES EVALUATED</b></font><br/><font color='#1E293B' size='14'><b>{report.total_clauses} Clauses</b></font>", styles["Normal"])
+    kpi_3 = Paragraph(f"<font color='#64748B' size='8'><b>VERIFIED COMPLIANT / DEFERRED</b></font><br/><font color='#059669' size='14'><b>{report.compliant_clauses} Verified Safe</b></font>", styles["Normal"])
+    kpi_4 = Paragraph(f"<font color='#64748B' size='8'><b>STATUTORY DISCREPANCIES</b></font><br/><font color='#DC2626' size='14'><b>{report.flagged_clauses} Actionable Flags</b></font>", styles["Normal"])
+
+    kpi_grid = Table([
+        [kpi_1, kpi_2],
+        [kpi_3, kpi_4]
+    ], colWidths=[170, 174])
+    kpi_grid.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+        ('PADDING', (0, 0), (-1, -1), 12),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+
+    dash_box = Table([[d, kpi_grid]], colWidths=[150, 354])
+    dash_box.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#CBD5E1")),
+        ('PADDING', (0, 0), (-1, -1), 10),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(dash_box)
+
+    story.append(Spacer(1, 28))
     summary_notice = (
-        "<b>Executive Scope:</b> This document details the algorithmic audit of the above employment policy against 44 central Indian "
-        "labour codes, data privacy laws (DPDP Act 2023), and workplace harassment regulations (POSH Act 2013). "
-        "Any flagged items below represent potential legal non-compliance or procedural ambiguity requiring review."
+        "<b>Executive Audit Scope:</b> This document represents an automated statutory compliance audit comparing the submitted corporate "
+        "policy against 44 central Indian labour codes, data privacy regulations (DPDP Act 2023), and workplace harassment laws (POSH Act 2013). "
+        "Flagged discrepancies represent potential statutory non-compliance requiring prioritization and remediation."
     )
-    story.append(Paragraph(summary_notice, body_style))
+    notice_box = Table([[Paragraph(summary_notice, body_style)]], colWidths=[504])
+    notice_box.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F1F5F9")),
+        ('LINEBEFORE', (0, 0), (0, -1), 4, colors.HexColor("#0F172A")),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+        ('PADDING', (0, 0), (-1, -1), 12),
+    ]))
+    story.append(notice_box)
     story.append(PageBreak())
 
     # ──────────────────────────────────────────────────────────────────────────
     # PAGE 2: EXECUTIVE SUMMARY
     # ──────────────────────────────────────────────────────────────────────────
-    story.append(Paragraph("Executive Summary & Telemetry", h1_style))
+    story.append(Paragraph("Executive Compliance Assessment", h1_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#1F2227"), spaceAfter=14))
 
     exec_p = (
@@ -272,24 +319,6 @@ def generate_compliance_pdf(report_id: int) -> bytes:
         ('PADDING', (0, 0), (-1, -1), 8),
     ]))
     story.append(t)
-    story.append(Spacer(1, 24))
-
-    # Model Comparison
-    story.append(Paragraph("AI Consensus Engine Metrics", h2_style))
-    model_info = (
-        f"THEMIS evaluates every policy clause using dual-model semantic retrieval followed by natural language inference (NLI):<br/><br/>"
-        f"• <b>MiniLM (General Legal Alignment):</b> Average similarity score of <b>{int(round(report.miniml_avg_score * 100))}%</b>.<br/>"
-        f"• <b>InLegal-SBERT (Indian Jurisprudence):</b> Average similarity score of <b>{int(round(report.inlegal_avg_score * 100))}%</b>.<br/>"
-        f"• <b>Scan Processing Time:</b> {report.scan_duration_seconds:.2f} seconds."
-    )
-    
-    model_box = Table([[Paragraph(model_info, body_style)]], colWidths=[504])
-    model_box.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F1F5F9")),
-        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#94A3B8")),
-        ('PADDING', (0, 0), (-1, -1), 12),
-    ]))
-    story.append(model_box)
     story.append(PageBreak())
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -315,12 +344,36 @@ def generate_compliance_pdf(report_id: int) -> bytes:
             severity_val = issue.severity_score
 
             header_text = f"<b>Issue #{idx} — {law_name} ({section})</b>"
-            badge_text = f"Status: <b>{status_tag}</b> | Severity: <b>{severity_val}/10</b>"
+            badge_text = f"Status: <b>{status_tag}</b> | Severity: <b>{severity_val}/100</b>"
             
-            header_table = Table([[Paragraph(header_text, body_bold_style), Paragraph(f"<p align='right'>{badge_text}</p>", body_style)]], colWidths=[314, 190])
+            # Refined legal domain color palettes per severity/status
+            if status_tag == "CONFLICT":
+                bg_col = colors.HexColor("#FEE2E2")
+                border_col = colors.HexColor("#EF4444")
+                text_col = "#7F1D1D"
+            elif status_tag == "MISSING":
+                bg_col = colors.HexColor("#FEF3C7")
+                border_col = colors.HexColor("#F59E0B")
+                text_col = "#78350F"
+            elif status_tag == "GAP":
+                bg_col = colors.HexColor("#E2E8F0")
+                border_col = colors.HexColor("#64748B")
+                text_col = "#1E293B"
+            else:
+                bg_col = colors.HexColor("#F0FDF4")
+                border_col = colors.HexColor("#10B981")
+                text_col = "#065F46"
+
+            header_style_custom = ParagraphStyle("HSC", parent=body_bold_style, textColor=colors.HexColor(text_col))
+            badge_style_custom = ParagraphStyle("BSC", parent=body_style, textColor=colors.HexColor(text_col), alignment=2)
+
+            header_table = Table([
+                [Paragraph(header_text, header_style_custom), Paragraph(badge_text, badge_style_custom)]
+            ], colWidths=[304, 200])
+            
             header_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#E2E8F0") if status_tag != "CONFLICT" else colors.HexColor("#FEE2E2")),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#94A3B8")),
+                ('BACKGROUND', (0, 0), (-1, -1), bg_col),
+                ('BOX', (0, 0), (-1, -1), 1, border_col),
                 ('PADDING', (0, 0), (-1, -1), 8),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]))
@@ -335,8 +388,9 @@ def generate_compliance_pdf(report_id: int) -> bytes:
 
             violate_lbl = Paragraph("<b>Statutory Mandate & Violation Analysis:</b>", body_style)
             desc_text = issue.description or (rule.requirement_text if rule else "Statutory conflict detected.")
-            sim_text = f"<br/><font color='#64748B' size='8'>Similarity Consensus: MiniLM ({int(round(issue.miniml_similarity * 100))}%) | InLegal-SBERT ({int(round(issue.inlegal_similarity * 100))}%)</font>"
-            desc_box = Table([[Paragraph(desc_text + sim_text, box_text_style)]], colWidths=[504])
+            desc_text = re.sub(r'\s*\(\s*Caught by:[^)]*\)', '', desc_text, flags=re.IGNORECASE).strip()
+            desc_text = re.sub(r'\s*\(\s*Semantic similarity:[^)]*\)', '', desc_text, flags=re.IGNORECASE).strip()
+            desc_box = Table([[Paragraph(desc_text, box_text_style)]], colWidths=[504])
             desc_box.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, -1), colors.white),
                 ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),

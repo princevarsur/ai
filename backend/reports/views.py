@@ -36,7 +36,11 @@ class PDFReportView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        filename = f"THEMIS_Audit_Report_{report.id}.pdf"
+        raw_name = report.policy.title if report.policy and report.policy.title else f"Report_{report.id}"
+        if not raw_name.lower().endswith(".pdf"):
+            raw_name = f"{raw_name}.pdf"
+        filename = f"THEMIS_{raw_name}"
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
         return response

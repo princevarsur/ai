@@ -671,9 +671,8 @@ def _generate_description(
     element_results: list[dict] | None = None,
     coverage_fraction: float = 0.0,
 ) -> str:
-    """Generate human-readable description mentioning which signal caught the issue."""
+    """Generate clean human-readable violation description."""
     law_ref = f"{rule.law_name} {rule.section}"
-    signal_note = f"(Caught by: {catch_signal})"
 
     if element_results and len(element_results) > 1:
         found_elems = [el for el in element_results if el.get("found")]
@@ -691,46 +690,35 @@ def _generate_description(
 
         summary_line = f"({len(found_elems)} of {len(element_results)} required elements addressed)"
         desc = " ".join(parts) + " " + summary_line if parts else f"Issue flagged for {law_ref}."
-        return f"{desc} {signal_note}"
+        return desc.strip()
 
     if status == "MISSING":
         return (
             f"The policy does not address the requirement under {law_ref}. "
             f"This section requires: {rule.requirement_text[:200]}. "
-            f"No matching keywords or semantically similar clauses were "
-            f"found in the document. {signal_note}"
+            f"No matching clauses addressing these mandates were found in the document."
         )
 
     if status == "CONFLICT":
         clause_preview = clause_text[:150].replace("\n", " ")
         if nli_result and nli_result["label"] == "contradiction":
-            conf_pct = f"{nli_result['confidence']:.0%}"
             return (
                 f"Direct contradiction detected with {law_ref}. "
                 f"The policy states: \"{clause_preview}\" — this directly "
-                f"contradicts the requirement: \"{rule.requirement_text[:150]}...\" "
-                f"{signal_note}, confidence {conf_pct}."
+                f"contradicts the statutory requirement: \"{rule.requirement_text[:150]}...\""
             )
         return (
             f"Conflict detected with {law_ref}. "
             f"The policy states: \"{clause_preview}...\" "
-            f"However, the law requires: \"{rule.requirement_text[:150]}...\" "
-            f"(Semantic similarity: {combined_sim:.0%}) {signal_note}"
+            f"However, the statutory law requires: \"{rule.requirement_text[:150]}...\""
         )
 
     if status == "GAP":
         clause_preview = clause_text[:150].replace("\n", " ")
-        kw_note = (
-            "Relevant keywords were found"
-            if keyword_found
-            else "No exact keywords were found"
-        )
         return (
             f"Partial compliance gap with {law_ref}. "
-            f"{kw_note}, but the coverage appears incomplete. "
-            f"The policy mentions: \"{clause_preview}...\" "
-            f"The full requirement is: \"{rule.requirement_text[:150]}...\" "
-            f"(Semantic similarity: {combined_sim:.0%}) {signal_note}"
+            f"The policy mentions: \"{clause_preview}...\", but coverage appears incomplete. "
+            f"The full statutory requirement is: \"{rule.requirement_text[:150]}...\""
         )
 
-    return f"Issue flagged for {law_ref}: {rule.requirement_text[:200]} {signal_note}"
+    return f"Issue flagged for {law_ref}: {rule.requirement_text[:200]}"

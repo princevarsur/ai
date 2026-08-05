@@ -51,26 +51,28 @@ export default function Sidebar() {
     }}>
 
       {/* ── Wordmark ───────────────────────────────────────────── */}
-      <div style={{
-        padding: '20px 18px 16px',
+      <div className="sidebar-brand-logo" style={{
+        padding: '24px 20px 20px',
         borderBottom: `1px solid ${C.border}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        gap: 14,
+        cursor: 'pointer',
+        transition: 'opacity 0.2s ease',
       }}>
-        <ThemisMark size={22} color={C.markColor} />
+        <ThemisMark size={32} color={C.markColor} thinking={true} />
         <div>
           <div style={{
             fontFamily: "'IBM Plex Sans', sans-serif",
-            fontSize: 13,
-            fontWeight: 600,
-            letterSpacing: '0.10em',
+            fontSize: 17,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
             textTransform: 'uppercase',
             color: C.wordmarkText,
           }}>
             Themis
           </div>
-          <div style={{ fontSize: 10, color: C.subtitleText, letterSpacing: '0.04em', marginTop: 1 }}>
+          <div style={{ fontSize: 11.5, color: C.subtitleText, letterSpacing: '0.05em', marginTop: 2, fontWeight: 500 }}>
             Compliance Engine
           </div>
         </div>

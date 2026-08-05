@@ -336,19 +336,32 @@ hr { border: none; border-top: 1px solid var(--hairline); }
   border-radius: var(--r-sm);
 }
 
-/* ── ThemisMark stroke animation ────────────────────────────────── */
-@keyframes stroke-draw {
-  0%   { stroke-dashoffset: var(--path-len, 200); }
-  50%  { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: calc(-1 * var(--path-len, 200)); }
+/* ── ThemisMark harmonic balance oscillation ──────────────────────── */
+@keyframes balance-weighing {
+  0%   { transform: rotate(-4.5deg); }
+  50%  { transform: rotate(4.5deg); }
+  100% { transform: rotate(-4.5deg); }
 }
 
-.themis-mark-thinking .mark-path {
-  animation: stroke-draw 2.4s ease-in-out infinite;
+@keyframes fulcrum-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.themis-mark-thinking .themis-beam,
+.sidebar-brand-logo:hover .themis-beam {
+  transform-origin: 17.5px 10px;
+  animation: balance-weighing 2.4s ease-in-out infinite;
+}
+
+.themis-mark-thinking .mark-fulcrum {
+  animation: fulcrum-pulse 1.8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .themis-mark-thinking .mark-path { animation: none; }
+  .themis-mark-thinking .themis-beam,
+  .sidebar-brand-logo:hover .themis-beam,
+  .themis-mark-thinking .mark-fulcrum { animation: none; }
   * { transition-duration: 0ms !important; }
 }
 

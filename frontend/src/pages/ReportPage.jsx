@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Table, Modal, Tag, Progress, Badge, Skeleton, message } from 'antd';
+import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { complianceAPI, reportsAPI } from '../services/api';
 import ThemisMark from '../components/ThemisMark';
+import ChalkBookLoader from '../components/ChalkBookLoader';
 
 // Helper for score colors: 0-39 = red, 40-69 = amber, 70-100 = green
 function getScoreColor(score) {
@@ -129,7 +131,17 @@ export default function ReportPage() {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      const fileName = `THEMIS_Compliance_Report_${report.id}.pdf`;
+      let fileName;
+      const disp = res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition']);
+      if (disp && disp.includes('filename=')) {
+        const matches = disp.match(/filename="?([^"]+)"?/);
+        if (matches && matches[1]) fileName = matches[1].replace(/["']/g, '');
+      }
+      if (!fileName) {
+        let raw = (report && (report.policy?.title || report.policy_title || report.title)) || `Report_${report?.id || 1}`;
+        if (!raw.toLowerCase().endsWith('.pdf')) raw += '.pdf';
+        fileName = `THEMIS_${raw}`;
+      }
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
@@ -308,7 +320,7 @@ export default function ReportPage() {
         {rescanning ? (
           <div className="panel" style={{ padding: '64px 32px', textAlign: 'center', margin: '48px 0' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-              <ThemisMark size={56} color="var(--accent)" thinking={true} />
+              <ChalkBookLoader size={68} />
             </div>
             <h2 style={{ fontFamily: "'Newsreader', serif", fontSize: 24, marginBottom: 8, color: 'var(--ink)' }}>
               Re-evaluating Compliance Posture
@@ -509,7 +521,7 @@ export default function ReportPage() {
                   {activeIssue.legal_rule?.section && ` — Section ${activeIssue.legal_rule.section}`}
                 </div>
                 <div>
-                  {activeIssue.description || activeIssue.legal_rule?.description || 'Clause fails to satisfy statutory minimum guarantees under labor and corporate compliance regulations.'}
+                  {(activeIssue.description || activeIssue.legal_rule?.description || 'Clause fails to satisfy statutory minimum guarantees under labor and corporate compliance regulations.').replace(/\s*\(\s*(Caught by|Semantic similarity):[^)]*\)/gi, '').strip?.() || (activeIssue.description || activeIssue.legal_rule?.description || 'Clause fails to satisfy statutory minimum guarantees under labor and corporate compliance regulations.').replace(/\s*\(\s*(Caught by|Semantic similarity):[^)]*\)/gi, '')}
                 </div>
               </div>
             </div>
@@ -520,11 +532,11 @@ export default function ReportPage() {
                 <span className="label-sm" style={{ color: 'var(--success)' }}>Suggested Compliant Template Fix</span>
                 <button
                   type="button"
-                  className="btn btn-ghost"
-                  style={{ padding: '2px 8px', height: 'auto', fontSize: 11 }}
+                  className="btn btn-ghost interactive-btn"
+                  style={{ padding: '4px 10px', height: 'auto', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   onClick={() => handleCopyFix(activeIssue.template_fix || 'No template fix provided for this specific custom rule.')}
                 >
-                  {copied ? '✅ Copied to clipboard' : '📋 Copy Text'}
+                  {copied ? <><CheckOutlined style={{ color: 'var(--success)' }} /> Copied</> : <><CopyOutlined /> Copy Text</>}
                 </button>
               </div>
               <pre className="mono" style={{
