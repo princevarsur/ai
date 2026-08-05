@@ -379,3 +379,16 @@ hr { border: none; border-top: 1px solid var(--hairline); }
 .data-table tbody td { padding: 10px 14px; color: var(--ink-2); vertical-align: middle; }
 .data-table tbody td.numeric { text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
 .data-table tbody tr:last-child { border-bottom: none; }
+
+/* ── Interactive tactile buttons (Emil Kowalski Design Engineering) ──── */
+.interactive-btn {
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease-out, border-color 150ms ease-out !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  .interactive-btn:hover {
+    transform: translateY(-1px);
+  }
+}
+.interactive-btn:active {
+  transform: scale(0.97) !important;
+}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, Statistic, Table, Button, Skeleton, Tag, Empty } from 'antd';
+import { CloudUploadOutlined, ExperimentOutlined, DatabaseOutlined } from '@ant-design/icons';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
   ReferenceArea, PieChart, Pie, Cell, Legend
@@ -382,21 +383,24 @@ export default function DashboardPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <Link to="/upload" style={{ width: '100%' }}>
-                <Button type="primary" size="large" block style={{ background: 'var(--accent)', height: 44, fontWeight: 500, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 16 }}>⬆️</span> Upload New Policy
+              <Link to="/upload" style={{ width: '100%', textDecoration: 'none' }}>
+                <Button type="primary" size="large" block className="interactive-btn" style={{ background: 'var(--accent)', height: 44, fontWeight: 500, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, borderRadius: 6 }}>
+                  <CloudUploadOutlined style={{ fontSize: 18, color: '#fff' }} />
+                  <span>Upload New Policy</span>
                 </Button>
               </Link>
 
-              <Link to="/what-if" style={{ width: '100%' }}>
-                <Button size="large" block style={{ height: 44, fontWeight: 500, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, borderColor: 'var(--hairline-2)' }}>
-                  <span style={{ fontSize: 16 }}>⚖️</span> What-If Clause Checker
+              <Link to="/what-if" style={{ width: '100%', textDecoration: 'none' }}>
+                <Button size="large" block className="interactive-btn" style={{ height: 44, fontWeight: 500, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, borderColor: 'var(--hairline-2)', borderRadius: 6 }}>
+                  <ExperimentOutlined style={{ fontSize: 18, color: '#F59E0B' }} />
+                  <span style={{ color: 'var(--ink)' }}>What-If Clause Checker</span>
                 </Button>
               </Link>
 
-              <Link to="/laws" style={{ width: '100%' }}>
-                <Button size="large" block style={{ height: 44, fontWeight: 500, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, borderColor: 'var(--hairline-2)' }}>
-                  <span style={{ fontSize: 16 }}>📚</span> View Statute Database
+              <Link to="/laws" style={{ width: '100%', textDecoration: 'none' }}>
+                <Button size="large" block className="interactive-btn" style={{ height: 44, fontWeight: 500, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, borderColor: 'var(--hairline-2)', borderRadius: 6 }}>
+                  <DatabaseOutlined style={{ fontSize: 18, color: '#10B981' }} />
+                  <span style={{ color: 'var(--ink)' }}>View Statute Database</span>
                 </Button>
               </Link>
             </div>
