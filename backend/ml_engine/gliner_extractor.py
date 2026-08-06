@@ -14,13 +14,23 @@ logger = logging.getLogger(__name__)
 _gliner_model = None
 
 def get_gliner_model():
-    """Lazy loader for GLiNER model to save memory and startup time."""
+    """Lazy loader for GLiNER model via ModelRegistry to save memory and startup time."""
     global _gliner_model
     if _gliner_model is None:
         try:
+            from compliance.model_registry import ModelRegistry
+            _gliner_model = ModelRegistry.get_gliner()
+            if _gliner_model is not None:
+                return _gliner_model
+        except Exception:
+            pass
+        try:
             print("Loading GLiNER zero-shot model (urchade/gliner_small-v2)...")
             from gliner import GLiNER
-            _gliner_model = GLiNER.from_pretrained("urchade/gliner_small-v2")
+            try:
+                _gliner_model = GLiNER.from_pretrained("urchade/gliner_small-v2", local_files_only=True)
+            except Exception:
+                _gliner_model = GLiNER.from_pretrained("urchade/gliner_small-v2")
             print("GLiNER loaded successfully.")
         except Exception as exc:
             logger.error("Failed to load GLiNER model: %s", exc)

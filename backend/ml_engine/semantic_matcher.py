@@ -46,20 +46,34 @@ legal_model = None
 
 
 def _load_models():
-    """Load both models. Called lazily on first use."""
+    """Load both models via ModelRegistry singleton (local cache first)."""
     global fast_model, legal_model
+    try:
+        from compliance.model_registry import ModelRegistry
+        fast_model = ModelRegistry.get_minilm()
+        legal_model = ModelRegistry.get_inlegal_sbert()
+        print("Both models loaded successfully from ModelRegistry.")
+        return
+    except Exception as e:
+        print("ModelRegistry loading fallback:", e)
 
     if SentenceTransformer is None:
         raise ImportError("sentence-transformers is required but not installed.")
 
     if fast_model is None:
         print(f"Loading MiniLM model ({FAST_MODEL_NAME})...")
-        fast_model = SentenceTransformer(FAST_MODEL_NAME)
+        try:
+            fast_model = SentenceTransformer(FAST_MODEL_NAME, local_files_only=True)
+        except Exception:
+            fast_model = SentenceTransformer(FAST_MODEL_NAME)
         print("MiniLM loaded.")
 
     if legal_model is None:
         print(f"Loading InLegal-SBERT model ({LEGAL_MODEL_NAME})...")
-        legal_model = SentenceTransformer(LEGAL_MODEL_NAME)
+        try:
+            legal_model = SentenceTransformer(LEGAL_MODEL_NAME, local_files_only=True)
+        except Exception:
+            legal_model = SentenceTransformer(LEGAL_MODEL_NAME)
         print("InLegal-SBERT loaded.")
 
     print("Both models loaded successfully.")

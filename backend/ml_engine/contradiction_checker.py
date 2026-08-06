@@ -15,17 +15,31 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# ─── Module-level model loading ───────────────────────────────────────────
+# ─── Lazy module-level model loading ───────────────────────────────────────────────
 
-print("Loading NLI CrossEncoder (nli-MiniLM2-L6-H768)...")
-try:
-    from sentence_transformers import CrossEncoder
-    nli_model = CrossEncoder("cross-encoder/nli-MiniLM2-L6-H768")
-    print("NLI model loaded.")
-except Exception as _e:
-    nli_model = None
-    logger.error("Failed to load NLI model: %s", _e)
-    print(f"WARNING: NLI model not loaded — {_e}")
+_nli_model_instance = None
+
+def _get_nli_model():
+    global _nli_model_instance
+    if _nli_model_instance is None:
+        try:
+            from compliance.model_registry import ModelRegistry
+            _nli_model_instance = ModelRegistry.get_nli_cross_encoder()
+            return _nli_model_instance
+        except Exception:
+            pass
+        try:
+            print("Loading NLI CrossEncoder (nli-MiniLM2-L6-H768)...")
+            from sentence_transformers import CrossEncoder
+            try:
+                _nli_model_instance = CrossEncoder("cross-encoder/nli-MiniLM2-L6-H768", local_files_only=True)
+            except Exception:
+                _nli_model_instance = CrossEncoder("cross-encoder/nli-MiniLM2-L6-H768")
+            print("NLI model loaded.")
+        except Exception as _e:
+            logger.error("Failed to load NLI model: %s", _e)
+            print(f"WARNING: NLI model not loaded — {_e}")
+    return _nli_model_instance
 
 # Model outputs scores in this order: contradiction, entailment, neutral
 LABEL_MAPPING = ["contradiction", "entailment", "neutral"]
@@ -57,7 +71,8 @@ def check_entailment(clause_text: str, law_requirement_text: str, clause_as_prem
             }
         }
     """
-    if nli_model is None:
+    model = _get_nli_model()
+    if model is None:
         return {
             "label": "neutral",
             "confidence": 0.0,
@@ -65,7 +80,7 @@ def check_entailment(clause_text: str, law_requirement_text: str, clause_as_prem
         }
 
     pair = (clause_text, law_requirement_text) if clause_as_premise else (law_requirement_text, clause_text)
-    raw = nli_model.predict([pair])
+    raw = model.predict([pair])
     scores = _softmax(raw[0])
 
     best_idx = int(np.argmax(scores))
@@ -95,7 +110,8 @@ def batch_check_entailment(pairs: list[tuple[str, str]], clause_as_premise: bool
     if not pairs:
         return []
 
-    if nli_model is None:
+    model = _get_nli_model()
+    if model is None:
         return [
             {
                 "label": "neutral",
@@ -111,7 +127,7 @@ def batch_check_entailment(pairs: list[tuple[str, str]], clause_as_premise: bool
 
     # Flip to (premise=law, hypothesis=clause) for each pair
     model_pairs = [(clause, law) if clause_as_premise else (law, clause) for clause, law in pairs]
-    raw_batch = nli_model.predict(model_pairs)
+    raw_batch = model.predict(model_pairs)
 
     results = []
     for raw in raw_batch:
