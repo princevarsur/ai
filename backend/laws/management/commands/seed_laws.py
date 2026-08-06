@@ -151,7 +151,7 @@ SEED_DATA = [
     },
     {
         "law_name": "DPDP Act, 2023",
-        "section": "Section 13",
+        "section": "Section 12 (Right to Correction & Erasure)",
         "category": "data_privacy",
         "requirement_text": (
             "The Data Principal has the right to request erasure of their "
@@ -170,7 +170,7 @@ SEED_DATA = [
     },
     {
         "law_name": "DPDP Act, 2023",
-        "section": "Section 8",
+        "section": "Section 13 (Right of Grievance Redressal)",
         "category": "data_privacy",
         "requirement_text": (
             "Data Principals have the right to access their personal data, "
@@ -189,7 +189,7 @@ SEED_DATA = [
     },
     {
         "law_name": "DPDP Act, 2023",
-        "section": "Section 10",
+        "section": "Section 8(6) (Personal Data Breach Notification)",
         "category": "data_privacy",
         "requirement_text": (
             "The Data Fiduciary must notify the Data Protection Board and "
@@ -587,7 +587,7 @@ SEED_DATA = [
     },
     {
         "law_name": "Industrial Relations Code, 2020",
-        "section": "Chapter III (Grievance Redressal Committee)",
+        "section": "Section 4 (Grievance Redressal Committee)",
         "category": "labour",
         "requirement_text": (
             "Every industrial establishment employing 20 or more workers must constitute a formal Grievance Redressal Committee "
@@ -891,6 +891,10 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(
                 f"Cleared {deleted_count} existing legal rule(s)."
             ))
+
+        # Remove historical mis-cited rules if present
+        LegalRule.objects.filter(law_name="Industrial Relations Code, 2020", section__istartswith="Chapter III").delete()
+        LegalRule.objects.filter(law_name="DPDP Act, 2023", section__in=["Section 8", "Section 10", "Section 13"]).delete()
 
         created_count = 0
         updated_count = 0

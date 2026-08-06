@@ -1,0 +1,286 @@
+[
+  {
+    "statute_citation": "IT Act 2000 Section 43A",
+    "title": "Reasonable Security Practices & Sensitive Personal Data",
+    "description": "Body corporate possessing, dealing or handling sensitive personal data or information (SPDI) in a computer resource must implement and maintain reasonable security practices and procedures under Information Technology SPI Rules 2011 Rule 8.",
+    "taxonomy_type": "composite",
+    "penalty_tier": "high",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "data_privacy",
+    "sub_elements": [
+      {
+        "element_key": "security_policy_doc",
+        "element_text": "Comprehensive documented information security policy and data protection procedures",
+        "weight": 0.25,
+        "gliner_label": "document_type"
+      },
+      {
+        "element_key": "control_measures",
+        "element_text": "Operational and managerial security control measures including access control and data encryption",
+        "weight": 0.25,
+        "gliner_label": "security control"
+      },
+      {
+        "element_key": "prescribed_standard",
+        "element_text": "Adherence to prescribed security standard such as ISO/IEC 27001 or equivalent certified standard",
+        "weight": 0.25,
+        "gliner_label": "compliance standard"
+      },
+      {
+        "element_key": "periodic_independent_vapt",
+        "element_text": "Periodic independent safety and Vulnerability Assessment and Penetration Testing (VAPT) audit by certified auditor",
+        "weight": 0.25,
+        "gliner_label": "audit frequency"
+      }
+    ]
+  },
+  {
+    "statute_citation": "IT Act 2000 Section 66E",
+    "title": "Punishment for Violation of Bodily Privacy & Surveillance Guard",
+    "description": "Prohibits intentionally capturing, publishing, or transmitting the image of a private area of any person without consent under circumstances violating privacy. Serves as bodily privacy surveillance guard.",
+    "taxonomy_type": "existence",
+    "penalty_tier": "high",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "cyber_security",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "POSH Act 2013 Section 4(2)",
+    "title": "Constitution of Internal Complaints Committee (ICC)",
+    "description": "Employer must constitute an Internal Complaints Committee (ICC) at each administrative office with mandatory statutory composition rules.",
+    "taxonomy_type": "composite",
+    "penalty_tier": "high",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "workplace_safety",
+    "sub_elements": [
+      {
+        "element_key": "presiding_officer_woman",
+        "element_text": "Presiding Officer must be a senior level woman employee employed at the workplace",
+        "weight": 0.25,
+        "gliner_label": "role/designation"
+      },
+      {
+        "element_key": "employee_members_min2",
+        "element_text": "At least 2 employee members committed to the cause of women or having legal knowledge or experience",
+        "weight": 0.25,
+        "gliner_label": "employee count"
+      },
+      {
+        "element_key": "external_member",
+        "element_text": "1 external member from an NGO or association committed to the cause of women or familiar with sexual harassment issues",
+        "weight": 0.25,
+        "gliner_label": "external role"
+      },
+      {
+        "element_key": "gender_parity_50pct",
+        "element_text": "At least 50 percent of total nominated ICC members must be women",
+        "weight": 0.25,
+        "gliner_label": "percentage"
+      }
+    ]
+  },
+  {
+    "statute_citation": "POSH Act 2013 Section 9(1)",
+    "title": "Statutory Sexual Harassment Complaint Filing Window",
+    "description": "Aggrieved woman must be permitted to file a written complaint of sexual harassment to the ICC within a minimum statutory window of 3 months from the date of incident.",
+    "taxonomy_type": "conflict",
+    "penalty_tier": "medium",
+    "mandatory_weight": 1.0,
+    "threshold_value": 3.0,
+    "threshold_unit": "month",
+    "threshold_op": "min",
+    "domain": "workplace_safety",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Code on Wages 2019 Section 17(1)(d)",
+    "title": "Monthly Wage Payment Deadline",
+    "description": "Wages payable on a monthly basis must be paid before the expiry of the 7th day of the succeeding month across all establishments.",
+    "taxonomy_type": "threshold",
+    "penalty_tier": "medium",
+    "mandatory_weight": 1.0,
+    "threshold_value": 7.0,
+    "threshold_unit": "day",
+    "threshold_op": "max",
+    "domain": "labour",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Code on Wages 2019 Section 17(2)",
+    "title": "Full & Final Settlement Payment Window",
+    "description": "Where an employee is removed, dismissed, retrenched, resigned, or superannuated, wages due must be paid within 2 working days.",
+    "taxonomy_type": "threshold",
+    "penalty_tier": "medium",
+    "mandatory_weight": 1.0,
+    "threshold_value": 2.0,
+    "threshold_unit": "day",
+    "threshold_op": "max",
+    "domain": "labour",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Code on Wages 2019 Section 18(3)",
+    "title": "Maximum Permissible Wage Deduction Cap",
+    "description": "Total deductions made from the wages of an employee in any wage period shall not exceed 50 percent of total wages.",
+    "taxonomy_type": "conflict",
+    "penalty_tier": "high",
+    "mandatory_weight": 1.0,
+    "threshold_value": 50.0,
+    "threshold_unit": "percent",
+    "threshold_op": "max",
+    "domain": "labour",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Maharashtra Shops & Establishments Act 2017 Section 18(5)",
+    "title": "Earned Leave Accumulation & Carry-Forward Cap (Maharashtra)",
+    "description": "An employee can accumulate earned leave up to a maximum limit of 45 days in Maharashtra. Accumulated unavailed leave must be encashed upon separation.",
+    "taxonomy_type": "threshold",
+    "penalty_tier": "low",
+    "mandatory_weight": 1.0,
+    "threshold_value": 45.0,
+    "threshold_unit": "day",
+    "threshold_op": "max",
+    "domain": "labour",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Karnataka Shops & Commercial Establishments Act 1961 Section 15(2)",
+    "title": "Earned Leave Accumulation & Carry-Forward Cap (Karnataka)",
+    "description": "An employee can accumulate earned leave up to a maximum limit of 30 days in Karnataka. Unavailed leave in excess of 30 days shall lapse or be encashed.",
+    "taxonomy_type": "threshold",
+    "penalty_tier": "low",
+    "mandatory_weight": 1.0,
+    "threshold_value": 30.0,
+    "threshold_unit": "day",
+    "threshold_op": "max",
+    "domain": "labour",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "DPDP Act 2023 Section 8(6)",
+    "title": "Personal Data Breach Notification Requirement",
+    "description": "In the event of a personal data breach, data fiduciary must give the Board and each affected Data Principal intimation of such breach without unreasonable delay.",
+    "taxonomy_type": "existence",
+    "penalty_tier": "high",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "data_privacy",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Contract Act 1872 Section 27",
+    "title": "Agreement in Restraint of Trade Void",
+    "description": "Every agreement by which any one is restrained from exercising a lawful profession, trade or business of any kind is to that extent void. Silence in policy text is informational/permissive, not non-compliant.",
+    "taxonomy_type": "conflict",
+    "penalty_tier": "medium",
+    "mandatory_weight": 0.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "contracts",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Maternity Benefit Act 1961 Section 5(3)",
+    "title": "Mandatory Paid Maternity Leave Duration",
+    "description": "Maximum period for which any woman shall be entitled to maternity benefit shall be 26 weeks of paid leave.",
+    "taxonomy_type": "threshold",
+    "penalty_tier": "high",
+    "mandatory_weight": 1.0,
+    "threshold_value": 26.0,
+    "threshold_unit": "weeks",
+    "threshold_op": "min",
+    "domain": "employee_benefits",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Maternity Benefit Act 1961 Section 11A",
+    "title": "Mandatory Crèche Facility Provision",
+    "description": "Every establishment having 50 or more employees shall have the facility of a crèche within prescribed distance.",
+    "taxonomy_type": "existence",
+    "penalty_tier": "medium",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "employee_benefits",
+    "sub_elements": []
+  },
+  {
+    "statute_citation": "Companies Act 2013 Section 177",
+    "title": "Vigil Mechanism & Whistleblower Channel",
+    "description": "Establishment of a vigil mechanism for directors and employees to report genuine concerns or grievances with adequate safeguards against victimization.",
+    "taxonomy_type": "composite",
+    "penalty_tier": "medium",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "corporate_governance",
+    "sub_elements": [
+      {
+        "element_key": "vigil_mechanism",
+        "element_text": "Formal vigil mechanism or whistleblower policy for reporting grievances",
+        "weight": 0.5,
+        "gliner_label": "policy_type"
+      },
+      {
+        "element_key": "safeguards_victimization",
+        "element_text": "Direct access to Audit Committee Chairperson and explicit protection safeguards against victimization",
+        "weight": 0.5,
+        "gliner_label": "protection_rule"
+      }
+    ]
+  },
+  {
+    "statute_citation": "Industrial Relations Code 2020 Section 4",
+    "title": "Grievance Redressal Committee Composition",
+    "description": "Establishment of Grievance Redressal Committee for resolution of disputes arising out of individual grievances.",
+    "taxonomy_type": "composite",
+    "penalty_tier": "medium",
+    "mandatory_weight": 1.0,
+    "threshold_value": null,
+    "threshold_unit": null,
+    "threshold_op": null,
+    "domain": "labour",
+    "sub_elements": [
+      {
+        "element_key": "grc_constitution",
+        "element_text": "Constitution of Grievance Redressal Committee with equal representation of employer and workers",
+        "weight": 0.5,
+        "gliner_label": "committee_rule"
+      },
+      {
+        "element_key": "equal_representation",
+        "element_text": "Adequate representation of women workers in the Grievance Redressal Committee proportional to total women workers",
+        "weight": 0.5,
+        "gliner_label": "gender_ratio"
+      }
+    ]
+  },
+  {
+    "statute_citation": "OSHWC Code 2020 Section 25(1)(a) / Factories Act 1948 Section 51",
+    "title": "Maximum Daily Working Hours",
+    "description": "No adult worker shall be required or allowed to work in an establishment for more than 8 hours in a day.",
+    "taxonomy_type": "conflict",
+    "penalty_tier": "high",
+    "domain": "labour",
+    "threshold_value": 8.0,
+    "threshold_unit": "hours",
+    "threshold_op": "max",
+    "mandatory_weight": 1.0,
+    "sub_elements": []
+  }
+]
