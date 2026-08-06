@@ -269,5 +269,18 @@
         "gliner_label": "gender_ratio"
       }
     ]
+  },
+  {
+    "statute_citation": "OSHWC Code 2020 Section 25(1)(a) / Factories Act 1948 Section 51",
+    "title": "Maximum Daily Working Hours",
+    "description": "No adult worker shall be required or allowed to work in an establishment for more than 8 hours in a day.",
+    "taxonomy_type": "conflict",
+    "penalty_tier": "high",
+    "domain": "labour",
+    "threshold_value": 8.0,
+    "threshold_unit": "hours",
+    "threshold_op": "max",
+    "mandatory_weight": 1.0,
+    "sub_elements": []
   }
 ]

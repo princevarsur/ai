@@ -97,7 +97,7 @@ def extract_entities(
 # --- Numeric & Time Parsers ---
 
 TIME_PERIOD_REGEX = re.compile(
-    r'(?i)\b(\d+)\s*(?:-\s*)?(days?|working\s+days?|months?|years?|weeks?)\b'
+    r'(?i)\b(\d+)\s*(?:-\s*)?(days?|working\s+days?|months?|years?|weeks?|hours?)\b'
 )
 
 ORDINAL_DAY_REGEX = re.compile(
@@ -117,7 +117,7 @@ def parse_time_period(text: str) -> Optional[Dict[str, Any]]:
     if not text:
         return None
 
-    # Match standard e.g. "10 days", "3 months", "2 working days"
+    # Match standard e.g. "10 days", "3 months", "2 working days", "24 hours"
     match = TIME_PERIOD_REGEX.search(text)
     if match:
         val = float(match.group(1))
@@ -130,6 +130,8 @@ def parse_time_period(text: str) -> Optional[Dict[str, Any]]:
             unit = 'year'
         elif 'week' in raw_unit:
             unit = 'week'
+        elif 'hour' in raw_unit:
+            unit = 'hour'
         else:
             unit = raw_unit
         return {"value": val, "unit": unit}
@@ -172,6 +174,8 @@ def normalize_to_days(value: float, unit: str) -> float:
         return value * 365.0
     elif 'week' in unit_clean:
         return value * 7.0
+    elif 'hour' in unit_clean:
+        return value / 24.0
     return value
 
 
