@@ -678,6 +678,81 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
     if issue_objects:
         FlaggedIssue.objects.bulk_create(issue_objects)
 
+    # ── Step 10: Engine v2 Pipeline (4-Way Taxonomy, Union Retrieval, NLI Gate & GLiNER) ──
+    try:
+        from compliance.ingestion import ingest_document
+        from compliance.kb import get_all_requirements
+        from compliance.retrieval import retrieve_for_requirement
+        from compliance.nli_gate import evaluate_nli_candidates, classify_requirement_gate
+        from compliance.gliner_engine import evaluate_numeric_comparison
+        from compliance.scoring import evaluate_composite_sub_elements, score_finding
+        from compliance.models import AuditFinding
+
+        logger.info("Running Engine v2 upgrade pipeline for policy id=%d", policy.id)
+        clause_list = ingest_document(str(policy.file.path), doc_id=policy.id)
+        AuditFinding.objects.filter(policy=policy).delete()
+
+        reqs = get_all_requirements()
+        for req in reqs:
+            # 1. Retrieve union top-k candidates (InLegal-SBERT + MiniLM + lexical fallback)
+            candidates = retrieve_for_requirement(req, clause_list, top_k=8, include_lexical=True)
+
+            # 2. Evaluate NLI Cross-Encoder probabilities and topical relevance
+            eval_candidates = evaluate_nli_candidates(candidates, hypothesis_text=req.description, requirement=req)
+
+            # 3. Evaluate numeric/temporal quantities via GLiNER if threshold/conflict rule
+            numeric_res = None
+            if req.taxonomy_type in ("threshold", "conflict") or req.threshold_value is not None:
+                best_txt = eval_candidates[0].get("raw_text", "") if eval_candidates else ""
+                numeric_res = evaluate_numeric_comparison(req, best_txt)
+
+            # 4. Classify requirement via NLI Gate & enforce non-hallucination evidence guard
+            gate_res = classify_requirement_gate(req, eval_candidates, numeric_eval_result=numeric_res)
+            verdict = gate_res.get("verdict", "MISSING")
+            evidence = gate_res.get("evidence", [])
+            nli_conf = gate_res.get("nli_confidence", 0.0)
+
+            # 5. For composite requirements, compute atomic sub-element coverage
+            sub_status = []
+            coverage_val = 1.0 if verdict == "COMPLIANT" else 0.0
+            if req.taxonomy_type == "composite":
+                cov_ratio, sub_status = evaluate_composite_sub_elements(req, clause_list)
+                coverage_val = cov_ratio
+                if cov_ratio >= 0.85:
+                    verdict = "COMPLIANT"
+                elif cov_ratio >= 0.40:
+                    verdict = "GAP"
+                else:
+                    verdict = "MISSING"
+
+            # 6. Calculate explainable severity formula and confidence tier
+            scoring_res = score_finding(
+                requirement=req,
+                verdict=verdict,
+                coverage=coverage_val,
+                nli_conf=nli_conf,
+                evidence=evidence,
+                sub_element_status=sub_status
+            )
+
+            if verdict == "MISSING":
+                evidence = []
+
+            AuditFinding.objects.create(
+                policy=policy,
+                requirement=req,
+                verdict=verdict,
+                confidence_tier=scoring_res.get("confidence_tier", "High"),
+                severity_score=scoring_res.get("severity", 0.0),
+                coverage=coverage_val,
+                nli_confidence=nli_conf,
+                evidence_clauses=evidence,
+                sub_element_status=sub_status
+            )
+        logger.info("Engine v2 pipeline complete for policy id=%d", policy.id)
+    except Exception as e:
+        logger.warning("Engine v2 execution exception (non-fatal): %s", e, exc_info=True)
+
     logger.info(
         "Scan complete: score=%.1f%% risk=%s duration=%.2fs issues=%d",
         report.overall_score, report.risk_level,
