@@ -259,7 +259,7 @@ def classify_requirement_gate(
         c for c in candidates 
         if c.get('is_topically_valid', True) 
         and (c.get('max_score', 0.0) >= relevance_floor)
-        and (c.get('minilm_score', 0.0) >= 0.15)
+        and (c.get('minilm_score', 0.0) >= 0.30)
     ]
 
     # If no topically valid candidates exist -> strictly MISSING with evidence: []
