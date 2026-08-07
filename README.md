@@ -360,46 +360,6 @@ Expected: All tests pass. Current status: **46/46 passing** (as of 2026-08-07).
 
 THEMIS is a compliance screening tool, not a substitute for legal review. Outputs should be verified by qualified legal counsel before relying on them for regulatory filings or board decisions.
 
----
-
-## Recent Improvements (August 2026)
-
-### Bug Fixes Applied
-
-1. **Retrieval Sort** — Union candidates now sorted by `max_score` before NLI (eliminates false negatives from arbitrary ordering)
-2. **Deferral Clause Downgrade** — Clauses stating "as per applicable law" no longer marked as CONFLICT (46 deferral patterns detected, downgraded to GAP)
-3. **Model Version Cache Key** — Embedding cache now includes model commit hash, preventing stale vectors after HuggingFace model updates (ensures reproducible audits)
-
-### Deterministic Rule Expansion (Phase A)
-
-Added 5 new anti-pattern checks:
-- Expanded deemed resignation detection (catches "treated as resignation", "job abandonment")
-- Wage payment mode validation (cash vs bank for >₹1000)
-- Aadhaar mandatory without alternative ID check
-- Leave accumulation caps (state-specific, 30-60 day limits)
-- Standing Orders boilerplate detection (skips redundant checks on certified templates)
-
-**Impact:** Accuracy improved from 7.5/10 to 8.5/10. False positive rate reduced by 25%.
-
-See `BUGFIX_2026-08-07.md` for detailed change log.
-
----
-
-## Roadmap
-
-### Phase B: Fine-Tune GLiNER on Legal NER (Optional)
-
-Fine-tune `urchade/gliner_small-v2` on Indian Legal NER dataset (NLLP 2022, 5K annotated judgments) to extract:
-- Statute names (e.g., "Factories Act 1948")
-- Section references (e.g., "Section 51")
-- Authorities (e.g., "Data Protection Board", "ICC")
-
-**Estimated improvement:** +5% recall on citation-heavy policies.
-
-**Time:** 1 week (requires GPU for training).
-
-**Status:** Documented, not implemented. Awaiting user prioritization.
-
 ### Future Enhancements
 
 - **OCR Integration:** Tesseract/EasyOCR for scanned PDFs
@@ -413,50 +373,14 @@ Fine-tune `urchade/gliner_small-v2` on Indian Legal NER dataset (NLLP 2022, 5K a
 
 ---
 
-## Contributing
-
-### Development Workflow
-
-1. Create feature branch: `git checkout -b feature/your-feature`
-2. Make changes, add tests
-3. Run test suite: `python manage.py test`
-4. Commit with semantic message: `feat: add OCR support for scanned PDFs`
-5. Submit pull request
-
-### Code Style
-
-- Python: PEP 8, enforced via `flake8`
-- JavaScript: ESLint + Prettier
-- Docstrings: Google style
-- Commit messages: Conventional Commits
-
----
-
-## License
-
-Proprietary. Internal use only.
-
----
-
-## Support
-
-For issues, feature requests, or questions:
-- **Email:** support@themis.local
-- **Documentation:** See `THEMIS_SIMPLIFIED.md` for detailed architecture
-- **Bug Reports:** Include policy sample (anonymized), Django logs, test output
-
----
-
 ## Credits
 
 **ML Models:**
 - InLegal-SBERT by bhavyagiri (Indian legal domain sentence embeddings)
 - spaCy by Explosion AI (industrial-strength NLP)
 - GLiNER by urchade (zero-shot entity recognition)
-- Sentence-Transformers by UKPLab (semantic similarity framework)
 
 **Legal Datasets:**
-- Legal NER dataset (NLLP 2022) by EkStep Foundation
 - India Code (indiacode.nic.in) — official statutory repository
 - ILDC (Indian Legal Document Corpus) for benchmarking
 
