@@ -258,6 +258,53 @@ def _check_high_risk_conflict(clause_text: str, rule) -> tuple[str | None, str |
         if any(term in text for term in ["withhold all earned", "permanently withhold", "forfeit all earned", "withhold entire", "withhold accrued"]):
             return "CONFLICT", "Unlawful forfeiture of earned salary / accrued wages upon resignation"
 
+    # PHASE A: 5 Additional Patterns (2026-08-07)
+    
+    # 8. Expanded Deemed Resignation Patterns (catch euphemisms)
+    if "standing orders" in rule_sec or "deemed resignation" in rule.requirement_text.lower():
+        if any(term in text for term in [
+            "treated as resignation", "voluntary resignation", "automatic termination",
+            "job abandonment", "abandonment", "absence without leave for", 
+            "unauthorized absence for", "awol", "continuous absence"
+        ]) and not _is_deferral_clause(clause_text):
+            return "CONFLICT", "Unlawful deemed resignation / automatic termination without due process"
+    
+    # 9. Wage Payment Mode (Cash vs Bank for amounts > ₹1000)
+    if "payment of wages" in law_name.lower() or "section 6" in rule_sec:
+        # Check if clause mentions cash payment without bank/cheque option
+        if any(term in text for term in ["paid in cash", "cash payment", "payment by cash"]):
+            if not any(term in text for term in ["bank", "cheque", "check", "transfer", "neft", "rtgs", "upi"]):
+                return "CONFLICT", "Wages >₹1000 must be paid via bank/cheque (Payment of Wages Act Sec 6)"
+    
+    # 10. Aadhaar Mandatory without Alternative ID (DPDP Act Section 7)
+    if "dpdp" in law_name and "aadhaar" in text:
+        # Check if Aadhaar is mandatory without alternative ID options
+        if any(term in text for term in ["must provide aadhaar", "aadhaar mandatory", "aadhaar required", "aadhaar is required"]):
+            if not any(term in text for term in ["or pan", "or voter id", "or passport", "alternative id", "any government id", "government-issued id"]):
+                return "CONFLICT", "Mandatory Aadhaar without alternative ID violates DPDP Act Section 7"
+    
+    # 11. State-Specific Leave Accumulation Caps (Maharashtra 45 days, Karnataka 30 days)
+    # NOTE: Requires policy.state field to be set (future enhancement)
+    if "leave" in rule.requirement_text.lower() and "accumulation" in rule.requirement_text.lower():
+        # Extract leave days mentioned in clause
+        import re
+        days_match = re.search(r'(\d+)\s*days?\s+(?:of\s+)?(?:earned\s+)?leave', text)
+        if days_match:
+            days = int(days_match.group(1))
+            # Generic cap check (can be refined per state later)
+            if days > 60:  # Most states cap at 45-60 days
+                return "CONFLICT", f"Leave accumulation of {days} days exceeds typical state statutory caps (30-45 days)"
+    
+    # 12. Standing Orders Boilerplate Detection (skip detailed checks)
+    # If clause is verbatim copy of certified Standing Orders, mark as compliant
+    if "standing orders" in text and any(phrase in text for phrase in [
+        "certified standing orders", "model standing orders", "certified by labour commissioner",
+        "as per the industrial employment standing orders act"
+    ]):
+        # This is statutory boilerplate, skip further evaluation
+        # NOTE: Caller should check this return value and skip NLI
+        return None, "STATUTORY_BOILERPLATE"
+
     return None, None
 
 
@@ -703,8 +750,20 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             # 3. Evaluate numeric/temporal quantities via GLiNER if threshold/conflict rule
             numeric_res = None
             if req.taxonomy_type in ("threshold", "conflict") or req.threshold_value is not None:
-                best_txt = eval_candidates[0].get("raw_text", "") if eval_candidates else ""
-                numeric_res = evaluate_numeric_comparison(req, best_txt)
+                for cand in eval_candidates:
+                    if not cand.get('is_topically_valid', True): continue
+                    res = evaluate_numeric_comparison(req, cand.get("raw_text", ""))
+                    if res and res.get("is_conflict"):
+                        numeric_res = res
+                        cand["numeric_conflict"] = True
+                        break
+                if not numeric_res:
+                    for cand in eval_candidates:
+                        if not cand.get('is_topically_valid', True): continue
+                        res = evaluate_numeric_comparison(req, cand.get("raw_text", ""))
+                        if res and res.get("is_compliant"):
+                            numeric_res = res
+                            break
 
             # 4. Classify requirement via NLI Gate & enforce non-hallucination evidence guard
             gate_res = classify_requirement_gate(req, eval_candidates, numeric_eval_result=numeric_res)

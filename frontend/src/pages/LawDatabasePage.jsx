@@ -150,16 +150,7 @@ export default function LawDatabasePage() {
           </p>
         </div>
 
-        {record.keywords_regex && (
-          <div style={{ marginBottom: '20px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>
-              Engine Keyword Regex & Pattern Gate:
-            </span>
-            <div style={{ background: '#1F2227', color: '#E2E8F0', padding: '10px 16px', borderRadius: '4px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '12px', wordBreak: 'break-all' }}>
-              {record.keywords_regex}
-            </div>
-          </div>
-        )}
+
 
         {record.template_fix && (
           <div>

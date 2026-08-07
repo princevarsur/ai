@@ -41,12 +41,32 @@ def get_clause_embedding(
 ) -> np.ndarray:
     """
     Get vector embedding for a clause text using the specified model,
-    caching vectors by model name and clause hash.
+    caching vectors by model name, model version, and clause hash.
+    
+    FIX #6: Include model version in cache key to ensure reproducibility.
+    If HuggingFace updates model weights, cached vectors become invalid.
     """
     if not embedding_hash:
         embedding_hash = hashlib.sha256(clause_text.encode('utf-8')).hexdigest()
 
-    cache_key = (model_name, embedding_hash)
+    # FIX #6: Extract model version/commit hash for cache key
+    model_version = 'v1'  # default fallback
+    
+    # Try to get commit hash from HuggingFace model
+    if hasattr(model_instance, '_commit_hash'):
+        model_version = model_instance._commit_hash
+    elif hasattr(model_instance, 'model'):
+        # SentenceTransformer wraps a Transformers model
+        inner_model = model_instance.model
+        if hasattr(inner_model, 'config') and hasattr(inner_model.config, '_commit_hash'):
+            model_version = inner_model.config._commit_hash
+        elif hasattr(inner_model, 'config') and hasattr(inner_model.config, 'name_or_path'):
+            # Use model name/path as version identifier
+            model_version = str(inner_model.config.name_or_path)
+    
+    # Cache key: (model_name, model_version, embedding_hash)
+    cache_key = (model_name, model_version, embedding_hash)
+    
     if cache_key in _EMBEDDING_CACHE:
         return _EMBEDDING_CACHE[cache_key]
 

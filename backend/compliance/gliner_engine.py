@@ -319,7 +319,7 @@ def evaluate_numeric_comparison(
     time_parsed = parse_time_period(clause_text)
     pct_parsed = parse_percentage(clause_text)
 
-    if time_parsed and 'day' in stat_unit.lower() or 'month' in stat_unit.lower():
+    if time_parsed and any(u in stat_unit.lower() for u in ['day', 'month', 'year', 'week', 'hour']):
         pol_val = normalize_to_days(time_parsed['value'], time_parsed['unit'])
         stat_days = normalize_to_days(stat_val, stat_unit)
 

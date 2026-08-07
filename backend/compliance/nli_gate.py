@@ -21,6 +21,66 @@ from compliance.model_registry import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
+# FIX #2: Deferral patterns for downgrading false positive CONFLICT verdicts
+DEFERRAL_PATTERNS = [
+    "as prescribed by",
+    "in accordance with",
+    "in compliance with",
+    "as per applicable",
+    "subject to applicable",
+    "as required by",
+    "in conformity with",
+    "pursuant to applicable",
+    "as mandated by",
+    "as stipulated by",
+    "governed by applicable",
+    "as per the provisions",
+    "comply with all applicable",
+    "comply with applicable",
+    "complying with applicable",
+    "in line with applicable",
+    "under applicable",
+    "as per relevant",
+    "as per prevailing",
+    "abide by all applicable",
+    "as per law",
+    "as per applicable law",
+    "as per the law",
+    "as per rules",
+    "as per extant",
+    "as per government",
+    "as per statutory",
+    "in accordance with law",
+    "under the law",
+    "under applicable law",
+    "according to applicable",
+    "according to state laws",
+    "according to labour laws",
+    "according to existing laws",
+    "according to relevant",
+    "according to law",
+    "company follows the",
+    "follows the sexual harassment",
+    "follows the act",
+    "follows applicable",
+    "follows statutory",
+    "strictly follows",
+    "adheres to",
+    "adhere to",
+    "adherence to",
+    "in alignment with",
+    "strictly complies with",
+]
+
+def _is_deferral_clause(clause_text: str) -> bool:
+    """
+    Detect if clause explicitly defers to law.
+    Deferral clauses cannot logically contradict the law they defer to.
+    NLI models frequently misclassify these as contradiction.
+    """
+    text_lower = clause_text.lower()
+    return any(pattern in text_lower for pattern in DEFERRAL_PATTERNS)
+
 # Keywords for topical rejection under IT Act 66E (Bodily Privacy / Surveillance)
 BODILY_PRIVACY_EXCLUDED_TERMS = {
     'photocopier', 'photocopy', 'scanner', 'scanning', 'printer', 'printing',
@@ -230,6 +290,10 @@ def classify_requirement_gate(
         # Automatic CONFLICT
         # Collect evidence clauses if available
         valid_cands = [c for c in candidates if c.get('is_topically_valid', True)]
+        conflict_cands = [c for c in valid_cands if c.get('numeric_conflict')]
+        if not conflict_cands:
+            conflict_cands = valid_cands[:1]
+            
         evidence_list = [
             {
                 "clause_id": c["clause_id"],
@@ -239,7 +303,7 @@ def classify_requirement_gate(
                 "nli_label": c.get("nli_label", "contradiction"),
                 "nli_score": c.get("nli_score", 0.0),
             }
-            for c in valid_cands[:3]
+            for c in conflict_cands
         ]
         return {
             'verdict': 'CONFLICT',
@@ -248,8 +312,15 @@ def classify_requirement_gate(
             'evaluated_candidates': candidates,
         }
 
-    # Filter candidates by topical validity
-    valid_candidates = [c for c in candidates if c.get('is_topically_valid', True)]
+    # Filter candidates by topical validity AND enforce a strict semantic floor 
+    # (requires MiniLM >= 0.12 to prevent InLegal-SBERT clustering artifacts 
+    # where all labor laws get grouped together causing NLI hallucination)
+    valid_candidates = [
+        c for c in candidates 
+        if c.get('is_topically_valid', True) 
+        and (c.get('max_score', 0.0) >= relevance_floor)
+        and (c.get('minilm_score', 0.0) >= 0.30)
+    ]
 
     # If no topically valid candidates exist -> strictly MISSING with evidence: []
     if not valid_candidates:
@@ -279,9 +350,19 @@ def classify_requirement_gate(
         }
 
     # 3. Classify verdict based on entailment and contradiction thresholds
-    if max_contradiction >= 0.65:
+    if max_contradiction >= 0.65 and requirement.taxonomy_type != 'threshold':
         verdict = 'CONFLICT'
         nli_conf = float(max_contradiction)
+        
+        # FIX #2: Deferral clause downgrade - clauses that defer to law cannot contradict it
+        if best_candidate and _is_deferral_clause(best_candidate.get('raw_text', '')):
+            logger.info(
+                "Deferral clause detected for requirement %s. Downgrading CONFLICT to GAP.",
+                requirement.statute_citation
+            )
+            verdict = 'GAP'
+            nli_conf = max(0.50, float(max_entailment))
+            
     elif max_entailment >= entailment_threshold:
         verdict = 'COMPLIANT'
         nli_conf = float(max_entailment)
@@ -297,11 +378,12 @@ def classify_requirement_gate(
         evidence_list = []
     else:
         # Include top valid candidates as evidence
-        top_evidence_cands = sorted(
-            valid_candidates,
-            key=lambda c: (c.get('entailment_prob', 0.0), c.get('max_score', 0.0)),
-            reverse=True
-        )[:3]
+        if verdict == 'CONFLICT':
+            sort_key = lambda c: (c.get('contradiction_prob', 0.0), c.get('max_score', 0.0))
+        else:
+            sort_key = lambda c: (c.get('entailment_prob', 0.0), c.get('max_score', 0.0))
+            
+        top_evidence_cands = sorted(valid_candidates, key=sort_key, reverse=True)[:1]
 
         evidence_list = [
             {
