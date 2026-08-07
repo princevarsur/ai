@@ -106,6 +106,8 @@ AUTH_USER_MODEL = 'accounts.User'
 # CORS
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://localhost:1060',
+    'http://127.0.0.1:1060',
 ]
 
 # REST Framework
