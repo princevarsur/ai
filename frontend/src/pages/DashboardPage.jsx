@@ -108,7 +108,7 @@ export default function DashboardPage() {
     .slice()
     .reverse()
     .map((report, i) => ({
-      name: report.scanned_at ? new Date(report.scanned_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `Scan #${i + 1}`,
+      name: report.scanned_at ? new Date(report.scanned_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : `Scan #${i + 1}`,
       score: Math.round(report.overall_score || 0),
       title: report.policy_title || `Policy #${report.id}`,
     }));
