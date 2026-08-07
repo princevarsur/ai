@@ -230,6 +230,10 @@ def classify_requirement_gate(
         # Automatic CONFLICT
         # Collect evidence clauses if available
         valid_cands = [c for c in candidates if c.get('is_topically_valid', True)]
+        conflict_cands = [c for c in valid_cands if c.get('numeric_conflict')]
+        if not conflict_cands:
+            conflict_cands = valid_cands[:1]
+            
         evidence_list = [
             {
                 "clause_id": c["clause_id"],
@@ -239,7 +243,7 @@ def classify_requirement_gate(
                 "nli_label": c.get("nli_label", "contradiction"),
                 "nli_score": c.get("nli_score", 0.0),
             }
-            for c in valid_cands[:3]
+            for c in conflict_cands
         ]
         return {
             'verdict': 'CONFLICT',
@@ -248,8 +252,15 @@ def classify_requirement_gate(
             'evaluated_candidates': candidates,
         }
 
-    # Filter candidates by topical validity
-    valid_candidates = [c for c in candidates if c.get('is_topically_valid', True)]
+    # Filter candidates by topical validity AND enforce a strict semantic floor 
+    # (requires MiniLM >= 0.12 to prevent InLegal-SBERT clustering artifacts 
+    # where all labor laws get grouped together causing NLI hallucination)
+    valid_candidates = [
+        c for c in candidates 
+        if c.get('is_topically_valid', True) 
+        and (c.get('max_score', 0.0) >= relevance_floor)
+        and (c.get('minilm_score', 0.0) >= 0.15)
+    ]
 
     # If no topically valid candidates exist -> strictly MISSING with evidence: []
     if not valid_candidates:
@@ -279,7 +290,7 @@ def classify_requirement_gate(
         }
 
     # 3. Classify verdict based on entailment and contradiction thresholds
-    if max_contradiction >= 0.65:
+    if max_contradiction >= 0.65 and requirement.taxonomy_type != 'threshold':
         verdict = 'CONFLICT'
         nli_conf = float(max_contradiction)
     elif max_entailment >= entailment_threshold:
@@ -297,11 +308,12 @@ def classify_requirement_gate(
         evidence_list = []
     else:
         # Include top valid candidates as evidence
-        top_evidence_cands = sorted(
-            valid_candidates,
-            key=lambda c: (c.get('entailment_prob', 0.0), c.get('max_score', 0.0)),
-            reverse=True
-        )[:3]
+        if verdict == 'CONFLICT':
+            sort_key = lambda c: (c.get('contradiction_prob', 0.0), c.get('max_score', 0.0))
+        else:
+            sort_key = lambda c: (c.get('entailment_prob', 0.0), c.get('max_score', 0.0))
+            
+        top_evidence_cands = sorted(valid_candidates, key=sort_key, reverse=True)[:1]
 
         evidence_list = [
             {

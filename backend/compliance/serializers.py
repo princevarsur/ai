@@ -66,7 +66,7 @@ class ScanReportListSerializer(serializers.ModelSerializer):
 
 class ScanReportDetailSerializer(serializers.ModelSerializer):
     policy_title = serializers.CharField(source='policy.title', read_only=True)
-    flagged_issues = FlaggedIssueSerializer(many=True, read_only=True)
+    flagged_issues = serializers.SerializerMethodField()
     audit_findings = AuditFindingSerializer(source='policy.audit_findings', many=True, read_only=True)
 
     class Meta:
@@ -79,6 +79,32 @@ class ScanReportDetailSerializer(serializers.ModelSerializer):
             'miniml_avg_score', 'inlegal_avg_score',
             'scanned_by', 'flagged_issues', 'audit_findings',
         )
+
+    def get_flagged_issues(self, obj):
+        from compliance.models import AuditFinding
+        findings = AuditFinding.objects.filter(policy=obj.policy).exclude(verdict='COMPLIANT')
+        issues = []
+        for f in findings:
+            issues.append({
+                "id": f.id,
+                "legal_rule": {
+                    "law_name": f.requirement.title,
+                    "section": f.requirement.statute_citation,
+                    "requirement_text": f.requirement.description,
+                    "template_fix": f.requirement.description
+                },
+                "clause_text": " | ".join(c.get("raw_text", "") if isinstance(c, dict) else str(c) for c in f.evidence_clauses) if f.evidence_clauses else "No explicit clause found.",
+                "clause_index": 0,
+                "status": f.verdict,
+                "severity_score": f.severity_score,
+                "miniml_similarity": f.nli_confidence,
+                "inlegal_similarity": f.coverage,
+                "description": f"Domain: {f.requirement.domain.title()} | Confidence: {f.confidence_tier}",
+                "is_resolved": False,
+                "nli_label": f.verdict,
+                "created_at": f.created_at.isoformat()
+            })
+        return issues
 
 
 class AccuracyMetricsSerializer(serializers.Serializer):

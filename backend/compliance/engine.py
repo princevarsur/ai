@@ -703,8 +703,20 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             # 3. Evaluate numeric/temporal quantities via GLiNER if threshold/conflict rule
             numeric_res = None
             if req.taxonomy_type in ("threshold", "conflict") or req.threshold_value is not None:
-                best_txt = eval_candidates[0].get("raw_text", "") if eval_candidates else ""
-                numeric_res = evaluate_numeric_comparison(req, best_txt)
+                for cand in eval_candidates:
+                    if not cand.get('is_topically_valid', True): continue
+                    res = evaluate_numeric_comparison(req, cand.get("raw_text", ""))
+                    if res and res.get("is_conflict"):
+                        numeric_res = res
+                        cand["numeric_conflict"] = True
+                        break
+                if not numeric_res:
+                    for cand in eval_candidates:
+                        if not cand.get('is_topically_valid', True): continue
+                        res = evaluate_numeric_comparison(req, cand.get("raw_text", ""))
+                        if res and res.get("is_compliant"):
+                            numeric_res = res
+                            break
 
             # 4. Classify requirement via NLI Gate & enforce non-hallucination evidence guard
             gate_res = classify_requirement_gate(req, eval_candidates, numeric_eval_result=numeric_res)
