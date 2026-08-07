@@ -21,6 +21,66 @@ from compliance.model_registry import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
+# FIX #2: Deferral patterns for downgrading false positive CONFLICT verdicts
+DEFERRAL_PATTERNS = [
+    "as prescribed by",
+    "in accordance with",
+    "in compliance with",
+    "as per applicable",
+    "subject to applicable",
+    "as required by",
+    "in conformity with",
+    "pursuant to applicable",
+    "as mandated by",
+    "as stipulated by",
+    "governed by applicable",
+    "as per the provisions",
+    "comply with all applicable",
+    "comply with applicable",
+    "complying with applicable",
+    "in line with applicable",
+    "under applicable",
+    "as per relevant",
+    "as per prevailing",
+    "abide by all applicable",
+    "as per law",
+    "as per applicable law",
+    "as per the law",
+    "as per rules",
+    "as per extant",
+    "as per government",
+    "as per statutory",
+    "in accordance with law",
+    "under the law",
+    "under applicable law",
+    "according to applicable",
+    "according to state laws",
+    "according to labour laws",
+    "according to existing laws",
+    "according to relevant",
+    "according to law",
+    "company follows the",
+    "follows the sexual harassment",
+    "follows the act",
+    "follows applicable",
+    "follows statutory",
+    "strictly follows",
+    "adheres to",
+    "adhere to",
+    "adherence to",
+    "in alignment with",
+    "strictly complies with",
+]
+
+def _is_deferral_clause(clause_text: str) -> bool:
+    """
+    Detect if clause explicitly defers to law.
+    Deferral clauses cannot logically contradict the law they defer to.
+    NLI models frequently misclassify these as contradiction.
+    """
+    text_lower = clause_text.lower()
+    return any(pattern in text_lower for pattern in DEFERRAL_PATTERNS)
+
 # Keywords for topical rejection under IT Act 66E (Bodily Privacy / Surveillance)
 BODILY_PRIVACY_EXCLUDED_TERMS = {
     'photocopier', 'photocopy', 'scanner', 'scanning', 'printer', 'printing',
@@ -293,6 +353,16 @@ def classify_requirement_gate(
     if max_contradiction >= 0.65 and requirement.taxonomy_type != 'threshold':
         verdict = 'CONFLICT'
         nli_conf = float(max_contradiction)
+        
+        # FIX #2: Deferral clause downgrade - clauses that defer to law cannot contradict it
+        if best_candidate and _is_deferral_clause(best_candidate.get('raw_text', '')):
+            logger.info(
+                "Deferral clause detected for requirement %s. Downgrading CONFLICT to GAP.",
+                requirement.statute_citation
+            )
+            verdict = 'GAP'
+            nli_conf = max(0.50, float(max_entailment))
+            
     elif max_entailment >= entailment_threshold:
         verdict = 'COMPLIANT'
         nli_conf = float(max_entailment)

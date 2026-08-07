@@ -152,19 +152,29 @@ class TestHybridRetrieval(TestCase):
         self.assertGreater(len(results), 1, "Candidate set must return top-k union candidates, not truncated to top-1")
 
     def test_embedding_caching(self):
-        """Verify clause embedding vectors are cached in memory using embedding_hash."""
+        """Verify clause embedding vectors are cached in memory using embedding_hash and model version."""
         c = self.clauses[0]
         from compliance.model_registry import ModelRegistry
         inlegal = ModelRegistry.get_inlegal_sbert()
 
-        cache_key = ("inlegal_sbert", c.embedding_hash)
-        self.assertNotIn(cache_key, _EMBEDDING_CACHE)
-
-        # Call get_clause_embedding first time
+        # FIX #6: Cache key now includes model version (model_name, model_version, embedding_hash)
+        # Check that cache key is a 3-tuple
         vec1 = get_clause_embedding(c.raw_text, c.embedding_hash, "inlegal_sbert", inlegal)
-        self.assertIn(cache_key, _EMBEDDING_CACHE)
+        
+        # Verify cache contains a 3-tuple key
+        cache_keys = list(_EMBEDDING_CACHE.keys())
+        self.assertTrue(any(len(k) == 3 for k in cache_keys), "Cache key must be 3-tuple (model_name, version, hash)")
+        
+        # Find the matching cache key
+        matching_key = None
+        for k in cache_keys:
+            if len(k) == 3 and k[0] == "inlegal_sbert" and k[2] == c.embedding_hash:
+                matching_key = k
+                break
+        
+        self.assertIsNotNone(matching_key, "Cache must contain key for inlegal_sbert with embedding_hash")
 
-        # Call get_clause_embedding second time
+        # Call get_clause_embedding second time - should hit cache
         vec2 = get_clause_embedding(c.raw_text, c.embedding_hash, "inlegal_sbert", inlegal)
         np.testing.assert_array_equal(vec1, vec2, "Cached vector must match exactly on subsequent lookup")
 
