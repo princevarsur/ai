@@ -251,7 +251,17 @@ def _check_high_risk_conflict(clause_text: str, rule) -> tuple[str | None, str |
     # 6. POSH Complaint Window < 3 months
     if "posh" in law_name and "section 9" in rule_sec:
         if any(term in text for term in ["within 10 days", "within 15 days", "within 30 days", "within ten days", "within fifteen days", "within thirty days"]):
-            return "CONFLICT", "POSH complaint window illegally restricted below statutory 3-month mandate"
+            # Aspirational / softening language makes a short timeframe a preference, not a
+            # binding restriction — "preferably within 10 days" does NOT override the 3-month
+            # statutory window and therefore cannot constitute a CONFLICT.
+            _aspirational_qualifiers = [
+                "preferably", "ideally", "at the earliest", "as early as possible",
+                "as soon as possible", "recommended", "encouraged", "suggested",
+                "where possible", "if possible", "should aim", "endeavour",
+                "endeavor", "best effort", "best endeavour",
+            ]
+            if not any(q in text for q in _aspirational_qualifiers):
+                return "CONFLICT", "POSH complaint window illegally restricted below statutory 3-month mandate"
 
     # 7. Withholding earned wages / Salary forfeiture
     if "section 14" in rule_sec or ("forfeiture" in rule_sec and "wages" in law_name) or "salary forfeiture" in rule.requirement_text.lower():
@@ -490,16 +500,15 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
         qty_conflict = False
         catch_signal = "threshold"
 
-        # ── Debug print for first 3 pairs (sanity check) ─────────────
+        # ── Debug log for first 3 pairs (sanity check, DEBUG level only) ──
         if debug_count < 3:
             debug_count += 1
-            print(
-                f"[DEBUG] Rule: {rule.law_name} {rule.section} | "
-                f"miniml={miniml_sim:.4f} inlegal={inlegal_sim:.4f} "
-                f"combined={combined_sim:.4f} | "
-                f"nli={nli_label or 'N/A'} qty_conflict={qty_conflict} "
-                f"kw_found={keyword_found} | "
-                f"clears_floor={clears_floor}"
+            logger.debug(
+                "[SCORE] Rule: %s %s | miniml=%.4f inlegal=%.4f combined=%.4f | "
+                "nli=%s qty_conflict=%s kw_found=%s | clears_floor=%s",
+                rule.law_name, rule.section,
+                miniml_sim, inlegal_sim, combined_sim,
+                nli_label or 'N/A', qty_conflict, keyword_found, clears_floor,
             )
 
         # ── Document Domain Filter: skip rules out of document scope ────
@@ -741,6 +750,27 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
 
         reqs = get_all_requirements()
         for req in reqs:
+            # ── Bug 1 Fix: Permissive / void-if-present rule guard ─────────────────
+            # Requirements with mandatory_weight == 0.0 are "void-if-present" statutes
+            # (e.g. Contract Act 1872 Section 27 non-compete).  The absence of such a
+            # clause is legally compliant; any NLI verdict on an unrelated clause will
+            # be a false positive.  Skip the entire evaluation for these requirements.
+            if getattr(req, 'mandatory_weight', 1.0) == 0.0:
+                AuditFinding.objects.update_or_create(
+                    policy=policy,
+                    requirement=req,
+                    defaults=dict(
+                        verdict="COMPLIANT",
+                        confidence_tier="High",
+                        severity_score=0.0,
+                        coverage=1.0,
+                        nli_confidence=0.0,
+                        evidence_clauses=[],
+                        sub_element_status=[],
+                    )
+                )
+                continue
+
             # 1. Retrieve union top-k candidates (InLegal-SBERT + MiniLM + lexical fallback)
             candidates = retrieve_for_requirement(req, clause_list, top_k=8, include_lexical=True)
 
@@ -748,10 +778,37 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
             eval_candidates = evaluate_nli_candidates(candidates, hypothesis_text=req.description, requirement=req)
 
             # 3. Evaluate numeric/temporal quantities via GLiNER if threshold/conflict rule
+            # ── Bug 2 Fix: Topical alignment guard for wage numeric rules ──────────
+            # Before running the numeric comparator, verify that the candidate clause
+            # is actually about wages / salary.  The time-period parser is generic and
+            # will fire on ANY clause containing a number (e.g. "within 15 days" in a
+            # compliance-affirmation clause or "22 days" in a leave-entitlement clause)
+            # which is completely unrelated to wage disbursement deadlines.
+            _WAGE_KEYWORDS = {
+                'salary', 'salaries', 'wage', 'wages', 'pay', 'payment', 'remuneration',
+                'disbursement', 'payroll', 'monthly pay', 'monthly salary', 'monthly wage',
+                'full and final', 'f&f', 'fnf', 'final settlement', 'last salary',
+                'last wages', 'notice pay', 'notice period pay',
+            }
+            _WAGE_CITATIONS = {'17(1)(d)', '17(2)', '18(3)', 'code on wages', 'payment of wages'}
+
+            def _is_wage_citation(citation: str) -> bool:
+                cl = citation.lower()
+                return any(k in cl for k in _WAGE_CITATIONS)
+
+            def _clause_is_wage_topical(text: str) -> bool:
+                tl = text.lower()
+                return any(k in tl for k in _WAGE_KEYWORDS)
+
             numeric_res = None
             if req.taxonomy_type in ("threshold", "conflict") or req.threshold_value is not None:
                 for cand in eval_candidates:
-                    if not cand.get('is_topically_valid', True): continue
+                    if not cand.get('is_topically_valid', True):
+                        continue
+                    # Apply wage topical guard for Code on Wages numeric rules
+                    if _is_wage_citation(req.statute_citation):
+                        if not _clause_is_wage_topical(cand.get("raw_text", "")):
+                            continue  # Skip non-wage clauses for wage numeric rules
                     res = evaluate_numeric_comparison(req, cand.get("raw_text", ""))
                     if res and res.get("is_conflict"):
                         numeric_res = res
@@ -759,7 +816,11 @@ def run_compliance_scan(policy_id: int, user) -> ScanReport:
                         break
                 if not numeric_res:
                     for cand in eval_candidates:
-                        if not cand.get('is_topically_valid', True): continue
+                        if not cand.get('is_topically_valid', True):
+                            continue
+                        if _is_wage_citation(req.statute_citation):
+                            if not _clause_is_wage_topical(cand.get("raw_text", "")):
+                                continue
                         res = evaluate_numeric_comparison(req, cand.get("raw_text", ""))
                         if res and res.get("is_compliant"):
                             numeric_res = res

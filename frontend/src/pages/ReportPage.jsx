@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Table, Modal, Tag, Progress, Badge, Skeleton, message } from 'antd';
+import { Table, Modal, Tag, Progress, Badge, Skeleton, message, Switch } from 'antd';
 import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { complianceAPI, reportsAPI } from '../services/api';
@@ -66,6 +66,7 @@ export default function ReportPage() {
 
   // Expanded clause texts in table
   const [expandedRowKeys, setExpandedRowKeys] = useState({});
+  const [showMissing, setShowMissing] = useState(false);
 
   // ── Fetch Report Details ────────────────────────────────────────
   useEffect(() => {
@@ -348,7 +349,7 @@ export default function ReportPage() {
   }
 
   const issues = report?.flagged_issues || [];
-  const activeIssues = issues.filter(i => !i.is_resolved && i.status !== 'compliant');
+  const activeIssues = issues.filter(i => !i.is_resolved && i.status?.toUpperCase() !== 'COMPLIANT' && (showMissing || i.status?.toUpperCase() !== 'MISSING'));
 
   return (
     <div style={{ maxWidth: 1040, margin: '0 auto', paddingBottom: 48 }}>
@@ -449,7 +450,13 @@ export default function ReportPage() {
               Actionable conflicts and structural omissions detected across Indian regulatory frameworks
             </p>
           </div>
-          <Badge count={activeIssues.length} overflowCount={99} style={{ backgroundColor: 'var(--danger)', fontWeight: 600 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted)' }}>Show Missing Clauses</span>
+              <Switch checked={showMissing} onChange={setShowMissing} size="small" />
+            </div>
+            <Badge count={activeIssues.length} overflowCount={99} style={{ backgroundColor: 'var(--danger)', fontWeight: 600 }} />
+          </div>
         </div>
 
         <Table

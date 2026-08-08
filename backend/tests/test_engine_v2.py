@@ -236,6 +236,69 @@ class TestGLiNEREngineAndNumericRules(TestCase):
         self.assertFalse(eval_compliant["is_conflict"])
         self.assertTrue(eval_compliant["is_compliant"])
 
+    def test_posh_complaint_window_aspirational_no_conflict(self):
+        """
+        Regression test: aspirational / softening qualifiers ("preferably", "ideally", etc.)
+        on a short timeframe must NOT trigger a CONFLICT.
+
+        Rationale: "preferably within 10 days" is guidance to encourage early reporting.
+        It does not impose a binding cut-off that overrides the 3-month statutory window
+        under POSH Act 2013 Section 9(1).  Flagging it as CONFLICT is a false positive.
+        """
+        req_posh = Requirement.objects.filter(statute_citation__icontains="9(1)").first()
+        self.assertIsNotNone(req_posh, "POSH Sec 9(1) requirement must exist in DB")
+
+        aspirational_clauses = [
+            # The exact clause that triggered the original false positive report
+            (
+                'Any Employee ("Complainant") may lodge a complaint of Sexual Harassment '
+                '("Complaint") against an Employee / third party ("Accused") at the earliest '
+                'point of time and in any case preferably within 10 days from the date of '
+                'occurrence of the alleged incident.',
+                "preferably within 10 days"
+            ),
+            # Variations using other softening qualifiers
+            (
+                "Complaints should ideally be filed within 15 days of the incident.",
+                "ideally within 15 days"
+            ),
+            (
+                "We encourage employees to file as soon as possible, and at latest within 30 days.",
+                "as soon as possible / within 30 days"
+            ),
+            (
+                "Employees are recommended to submit complaints within 10 days where possible.",
+                "recommended within 10 days"
+            ),
+            (
+                "The company endeavours to receive complaints within 10 working days for timely resolution.",
+                "endeavours within 10 working days"
+            ),
+        ]
+
+        for clause_text, label in aspirational_clauses:
+            with self.subTest(variant=label):
+                result = evaluate_numeric_comparison(req_posh, clause_text)
+                self.assertTrue(
+                    result["has_numeric_rule"],
+                    f"[{label}] numeric rule should be identified"
+                )
+                self.assertFalse(
+                    result["is_conflict"],
+                    f"[{label}] aspirational qualifier must suppress CONFLICT — got is_conflict=True"
+                )
+
+        # Sanity check: a genuine hard mandatory 10-day cut-off must still be a CONFLICT
+        hard_cutoff = (
+            "Complaints of sexual harassment must be filed within 10 days of the incident. "
+            "Late complaints will not be entertained."
+        )
+        result_hard = evaluate_numeric_comparison(req_posh, hard_cutoff)
+        self.assertTrue(
+            result_hard["is_conflict"],
+            "Hard mandatory 10-day cut-off must still trigger CONFLICT"
+        )
+
     def test_wage_payment_timing_rule(self):
         """Verify wage payment timing: 7th day -> COMPLIANT, 15th day -> CONFLICT."""
         req_wages = Requirement.objects.filter(statute_citation__icontains="17(1)(d)").first()

@@ -14,8 +14,8 @@ export default function Sidebar() {
 
   // ── Sidebar colour palette (calm slate & charcoal) ──────────
   const C = {
-    bg:               '#16181A',   // deep charcoal base
-    border:           '#26292E',   // subtle hairline divider
+    bg:               '#445668',   // deep charcoal base
+    border:           '#777b80',   // subtle hairline divider
     labelText:        '#606672',   // small-caps label
     navText:          '#9EA4B0',   // idle nav link
     navHoverBg:       '#202328',   // hover row

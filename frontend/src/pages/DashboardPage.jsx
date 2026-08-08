@@ -345,7 +345,7 @@ export default function DashboardPage() {
                 </Pie>
                 <RechartsTooltip
                   contentStyle={{ background: 'var(--bg)', border: '1px solid var(--hairline-2)', borderRadius: 4, fontFamily: 'var(--font-mono)', fontSize: 12 }}
-                  formatter={(val) => [`${val} flags`, 'Volume']}
+                  formatter={(val, name) => [`${val} flags`, name]}
                 />
                 <Legend
                   layout="horizontal"

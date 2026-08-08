@@ -220,17 +220,33 @@ def evaluate_nli_candidates(
     if not candidates:
         return []
 
+    # Apply keyword-based topical filter BEFORE NLI evaluation
+    from compliance.topical_filter import has_required_keywords
+    
     evaluated = []
     for cand in candidates:
         c_text = cand.get('raw_text', '')
 
-        # Check topical validity
+        # Check topical validity (existing IT Act 66E photocopier filter)
         valid_topic = is_topically_valid_clause(requirement, c_text)
+        
+        # NEW: Check keyword-based topical relevance
+        statute_citation = requirement.statute_citation if requirement else ''
+        has_keywords = has_required_keywords(c_text, statute_citation)
 
-        if not valid_topic:
+        if not valid_topic or not has_keywords:
             cand_copy = dict(cand)
+            
+            # Determine rejection reason for debugging
+            rejection_reason = []
+            if not valid_topic:
+                rejection_reason.append('domain_mismatch')
+            if not has_keywords:
+                rejection_reason.append('missing_keywords')
+            
             cand_copy.update({
                 'is_topically_valid': False,
+                'rejection_reason': ','.join(rejection_reason),
                 'nli_label': 'neutral',
                 'entailment_prob': 0.0,
                 'contradiction_prob': 0.0,

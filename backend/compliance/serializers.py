@@ -82,24 +82,54 @@ class ScanReportDetailSerializer(serializers.ModelSerializer):
 
     def get_flagged_issues(self, obj):
         from compliance.models import AuditFinding
+        from laws.models import LegalRule
         findings = AuditFinding.objects.filter(policy=obj.policy).exclude(verdict='COMPLIANT')
         issues = []
         for f in findings:
+            # Fuzzy match to find the corresponding LegalRule for template fix
+            template_fix = ""
+            best_match_score = 0
+            
+            # Words to match from the requirement
+            req_text = f"{f.requirement.statute_citation} {f.requirement.title}".lower()
+            import re
+            req_words = set(re.findall(r'\w+', req_text))
+            
+            for rule in LegalRule.objects.all():
+                rule_text = f"{rule.law_name} {rule.section} {rule.requirement_text}".lower()
+                rule_words = set(re.findall(r'\w+', rule_text))
+                
+                score = len(req_words.intersection(rule_words))
+                if score > best_match_score and score >= 3: # Require at least 3 matching words
+                    best_match_score = score
+                    template_fix = rule.template_fix or ""
+            
+            clause_text = " | ".join(c.get("raw_text", "") if isinstance(c, dict) else str(c) for c in f.evidence_clauses) if f.evidence_clauses else "No explicit clause found."
+            
+            if f.verdict == 'MISSING':
+                description = f"Missing provision for {f.requirement.statute_citation} ({f.requirement.title}). The policy fails to address this requirement. The law requires: \"{f.requirement.description}\" (Coverage: {int(f.coverage * 100)}%) (Caught by: threshold/existence omission)"
+            else:
+                verdict_str = f.verdict.capitalize()
+                snippet = clause_text[:120] + "..." if len(clause_text) > 120 else clause_text
+                req_snippet = f.requirement.description[:120] + "..." if len(f.requirement.description) > 120 else f.requirement.description
+                description = f"{verdict_str} detected with {f.requirement.statute_citation} ({f.requirement.title}). The policy states: \"{snippet}\" However, the law requires: \"{req_snippet}\" (Semantic similarity: {int(f.nli_confidence * 100)}%) (Caught by: element-level contradiction)"
+            
             issues.append({
                 "id": f.id,
+                "template_fix": template_fix,
                 "legal_rule": {
                     "law_name": f.requirement.title,
                     "section": f.requirement.statute_citation,
                     "requirement_text": f.requirement.description,
-                    "template_fix": f.requirement.description
+                    "template_fix": template_fix
                 },
-                "clause_text": " | ".join(c.get("raw_text", "") if isinstance(c, dict) else str(c) for c in f.evidence_clauses) if f.evidence_clauses else "No explicit clause found.",
+                "clause_text": clause_text,
                 "clause_index": 0,
                 "status": f.verdict,
                 "severity_score": f.severity_score,
                 "miniml_similarity": f.nli_confidence,
                 "inlegal_similarity": f.coverage,
-                "description": f"Domain: {f.requirement.domain.title()} | Confidence: {f.confidence_tier}",
+                "description": description,
                 "is_resolved": False,
                 "nli_label": f.verdict,
                 "created_at": f.created_at.isoformat()

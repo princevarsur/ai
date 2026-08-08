@@ -8,7 +8,8 @@ Features:
 - Zero-shot entity extraction for:
   'time period', 'monetary amount', 'percentage', 'deadline', 'statute reference', 'role/designation'.
 - Deterministic rule-based numeric comparisons for threshold and conflict rules:
-  * POSH complaint window (10 days vs 3-month statutory minimum -> CONFLICT)
+  * POSH complaint window: hard cut-off < 3 months -> CONFLICT; aspirational
+    qualifiers ("preferably", "ideally", "at the earliest", etc.) suppress the flag
   * Wage payment timing (7th day statutory maximum)
   * Wage deduction ceiling (50% statutory maximum)
   * Earned leave carry-forward caps (Maharashtra 45 days, Karnataka 30 days)
@@ -248,13 +249,33 @@ def evaluate_numeric_comparison(
             pol_days = normalize_to_days(pol_val, pol_unit)
             stat_days = normalize_to_days(stat_val or 3.0, stat_unit or 'month')
 
-            # Shorter window (e.g. 10 days or 30 days) triggers automatic CONFLICT
+            # Aspirational / softening language makes a short timeframe a preference, not a
+            # binding restriction.  "Preferably within 10 days" does NOT override the 3-month
+            # statutory window and is therefore NOT a CONFLICT.
+            _ASPIRATIONAL_QUALIFIERS = [
+                "preferably", "ideally", "at the earliest", "as early as possible",
+                "as soon as possible", "recommended", "encouraged", "suggested",
+                "where possible", "if possible", "should aim", "endeavour",
+                "endeavor", "best effort", "best endeavour",
+            ]
+            clause_lower = clause_text.lower()
+            is_aspirational = any(q in clause_lower for q in _ASPIRATIONAL_QUALIFIERS)
+
+            # Shorter window (e.g. 10 days or 30 days) triggers CONFLICT only when it
+            # is stated as a hard mandatory cut-off, not as aspirational guidance.
             if pol_days < stat_days:
-                result['is_conflict'] = True
-                result['reason'] = (
-                    f"Policy complaint window of {int(pol_val)} {pol_unit}(s) ({int(pol_days)} days) "
-                    f"is shorter than statutory minimum of 3 months ({int(stat_days)} days) under POSH Act Sec 9(1)."
-                )
+                if is_aspirational:
+                    result['is_conflict'] = False
+                    result['reason'] = (
+                        f"Policy mentions {int(pol_val)} {pol_unit}(s) aspirationally (softening qualifier "
+                        f"detected). This does not restrict the statutory 3-month window — not a conflict."
+                    )
+                else:
+                    result['is_conflict'] = True
+                    result['reason'] = (
+                        f"Policy complaint window of {int(pol_val)} {pol_unit}(s) ({int(pol_days)} days) "
+                        f"is shorter than statutory minimum of 3 months ({int(stat_days)} days) under POSH Act Sec 9(1)."
+                    )
             else:
                 result['is_compliant'] = True
                 result['reason'] = f"Policy complaint window of {int(pol_val)} {pol_unit}(s) satisfies statutory minimum."
